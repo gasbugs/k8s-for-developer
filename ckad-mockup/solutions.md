@@ -51,6 +51,17 @@
     kubectl apply -f app-v2.yaml
     ```
 
+**검증 (Validation):**
+
+```bash
+# 1. app-v2 파드가 정상적으로 생성되었는지 확인
+kubectl get pods -n production-webapp -l version=v2
+
+# 2. 서비스(my-app-service)가 v1과 v2 파드를 모두 엔드포인트로 잡고 있는지 확인
+kubectl get ep my-app-service -n production-webapp
+# (Endpoint 주소 개수가 v1(9개) + v2(1개) = 총 10개여야 함)
+```
+
 ---
 
 ### **2. 크론잡 (CronJob) 고급 설정 ⏰**
@@ -89,6 +100,18 @@
     kubectl apply -f cronjob.yaml
     ```
 
+**검증 (Validation):**
+
+```bash
+# 1. CronJob의 스케줄 및 HistoryLimit 설정 확인
+kubectl describe cronjob settlement-job -n batch-processing | grep -E "Schedule|History Limit"
+
+# 2. 강제로 Job을 하나 생성하여 동작 확인 (선택 사항)
+kubectl create job --from=cronjob/settlement-job test-job -n batch-processing
+kubectl get pods -n batch-processing
+kubectl logs -n batch-processing job/test-job
+```
+
 ---
 
 ### **3. 이미지 빌드 및 아카이브 (Docker/Podman) 🐳**
@@ -105,7 +128,13 @@
     ```bash
     docker save -o tool-v2.tar internal-tool:v2.0
     ```
-    (Note: `ci-cd-pipeline` 네임스페이스로 "전달"하라는 것은 보통 클러스터 노드에서 이미지를 사용할 수 있게 하거나, 해당 파일을 특정 위치로 옮기는 것을 의미합니다. 시험 환경에 따라 scp 등을 사용할 수도 있습니다.)
+
+**검증 (Validation):**
+
+```bash
+# tar 파일이 생성되었는지 확인
+ls -lh tool-v2.tar
+```
 
 ---
 
@@ -135,6 +164,17 @@
             role: db-client # 추가
     ```
 
+**검증 (Validation):**
+
+```bash
+# api-server 파드가 재생성된 후 레이블이 적용되었는지 확인
+kubectl get pods -n backend-tier --show-labels
+
+# (선택) 실제로 통신이 되는지 테스트 (NetPol이 Egress를 막지 않는다면)
+kubectl exec -it -n backend-tier deploy/api-server -- nc -zv database.database-tier 6379 
+# (Open 또는 Connected 메시지가 나와야 함)
+```
+
 ---
 
 ### **5. 시크릿(Secret) 생성 및 환경 변수 주입 🔐**
@@ -160,6 +200,14 @@
               name: api-auth
               key: api-token
     ```
+
+**검증 (Validation):**
+
+```bash
+# 파드 내부에서 환경변수 확인
+kubectl exec -n secure-api deploy/api-server -- env | grep SERVICE_TOKEN
+# SERVICE_TOKEN=secret-value-123 출력 확인
+```
 
 ---
 
@@ -189,6 +237,16 @@
     kubectl apply -f web-app.yaml
     ```
 
+**검증 (Validation):**
+
+```bash
+# 1. 실행 유저 확인 (id=2000 이어야 함)
+kubectl exec -n hardened-apps web-app -- id
+
+# 2. SecurityContext 설정 확인
+kubectl get pod web-app -n hardened-apps -o yaml | grep allowPrivilegeEscalation
+```
+
 ---
 
 ### **7. SA 및 RBAC 권한 할당 👤**
@@ -209,6 +267,13 @@
     ```bash
     kubectl create rolebinding event-watcher-binding --role=event-watcher-role --serviceaccount=infra-monitoring:event-watcher-sa -n infra-monitoring
     ```
+
+**검증 (Validation):**
+
+```bash
+# auth can-i 명령어로 권한 확인 ('yes' 출력 되어야 함)
+kubectl auth can-i list events --as=system:serviceaccount:infra-monitoring:event-watcher-sa -n infra-monitoring
+```
 
 ---
 
@@ -242,6 +307,14 @@
     kubectl apply -f old-deploy.yaml
     ```
 
+**검증 (Validation):**
+
+```bash
+# 배포된 리소스의 API Version 확인
+kubectl get deploy old-app -n migration-test -o yaml | grep apiVersion
+# apiVersion: apps/v1 확인
+```
+
 ---
 
 ### **9. 리소스 쿼터(ResourceQuota) 관리 📊**
@@ -274,6 +347,17 @@
             memory: "512Mi"
     ```
 
+**검증 (Validation):**
+
+```bash
+# 1. 파드가 Running 상태인지 확인
+kubectl apply -f quota-pod.yaml
+kubectl get pod quota-pod -n resource-mgmt
+
+# 2. 리소스 쿼터 사용량 증가 확인
+kubectl describe resourcequota -n resource-mgmt
+```
+
 ---
 
 ### **10. 멀티 컨테이너 로그 진단 📋**
@@ -286,6 +370,13 @@
     ```
     
     (만약 특정 에러 라인만 추출해야 한다면 `grep` 사용: `kubectl logs ... | grep ERROR > ...`)
+
+**검증 (Validation):**
+
+```bash
+# 저장된 파일 내용 확인
+cat /tmp/sidecar_error.log
+```
 
 ---
 
@@ -300,8 +391,7 @@
       --rule="/=web-service:80" \
       --dry-run=client -o yaml > ingress.yaml
     ```
-    (참고: `--rule` 문법은 `kubectl` 버전에 따라 다를 수 있습니다. YAML을 직접 작성하는 것이 가장 확실합니다.)
-
+    
     **YAML 예시:**
     ```yaml
     apiVersion: networking.k8s.io/v1
@@ -335,6 +425,14 @@
     kubectl apply -f ingress.yaml
     ```
 
+**검증 (Validation):**
+
+```bash
+# Ingress 생성 확인 및 Address 할당 확인 (Kind 환경 등에서는 시간이 걸릴 수 있음)
+kubectl get ingress -n traffic-mgmt
+kubectl describe ingress main-ingress -n traffic-mgmt
+```
+
 ---
 
 ### **12. 서비스 레이블 수정 및 노출 🔗**
@@ -354,6 +452,14 @@
     kubectl edit svc backend-svc -n svc-discovery
     ```
     `selector`를 `app: backend-v1`으로 수정.
+
+**검증 (Validation):**
+
+```bash
+# 서비스에 Endpoints가 잡혔는지 확인
+kubectl get ep backend-svc -n svc-discovery
+# (IP 목록이 나와야 함, <none>이면 실패)
+```
 
 ---
 
@@ -383,6 +489,16 @@
     ```bash
     kubectl rollout undo deployment/web-deploy -n update-strategy
     ```
+
+**검증 (Validation):**
+
+```bash
+# 1. 롤링 업데이트 상태 확인
+kubectl rollout status deployment/web-deploy -n update-strategy
+
+# 2. 이미지 버전 확인
+kubectl describe deployment web-deploy -n update-strategy | grep Image
+```
 
 ---
 
@@ -437,6 +553,17 @@
           claimName: task-pvc
     ```
 
+**검증 (Validation):**
+
+```bash
+# 1. PV와 PVC 상태가 Bound 인지 확인
+kubectl get pv task-pv
+kubectl get pvc task-pvc -n storage-layer
+
+# 2. 파드 내부에 마운트 되었는지 확인
+kubectl exec -n storage-layer <pod-name> -- df -h /mnt/data
+```
+
 ---
 
 ### **15. Readiness Probe 상태 확인 🩺**
@@ -460,6 +587,13 @@
           failureThreshold: 3
           periodSeconds: 10 # 선택 사항
     ```
+
+**검증 (Validation):**
+
+```bash
+# 파드 상세 정보에서 Readiness Probe 설정 확인
+kubectl describe pod -n availability-test <pod-name> | grep Readiness
+```
 
 ---
 
@@ -490,6 +624,14 @@
           name: app-config
     ```
 
+**검증 (Validation):**
+
+```bash
+# 파드 내부 파일 확인
+kubectl exec -n config-db <pod-name> -- cat /etc/config/server.port
+# 8080 출력 확인
+```
+
 ---
 
 ### **17. Nginx 환경 설정 및 포트 노출 🌐**
@@ -506,3 +648,13 @@
     ```bash
     kubectl apply -f pod.yaml
     ```
+
+**검증 (Validation):**
+
+```bash
+# 1. 환경변수 확인
+kubectl exec -n web-server-prod nginx-pod -- env | grep ENV_MODE
+
+# 2. 포트 설정 확인 (yaml 확인)
+kubectl get pod nginx-pod -n web-server-prod -o yaml | grep containerPort
+```
