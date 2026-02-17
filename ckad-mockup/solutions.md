@@ -118,13 +118,17 @@ kubectl describe cronjob settlement-job -n batch-processing | grep -E "Schedule|
     # 빌드
     docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
     
-    # 아카이브 저장
-    docker save -o tool-v2.tar internal-tool:v2.0
+    # 로컬 레지스트리용 태그 설정
+    docker tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
+    
+    # 푸시
+    docker push localhost:5000/internal-tool:v2.0
     ```
 
 **검증 (Validation):**
 ```bash
-ls -lh tool-v2.tar
+# 레지스트리 API를 통한 이미지 및 태그 확인
+curl -s http://localhost:5000/v2/internal-tool/tags/list
 ```
 
 ---

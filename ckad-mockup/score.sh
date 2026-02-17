@@ -51,10 +51,10 @@ check_problem 2 6 "CronJob Setup" "
     [ \$(kubectl get cronjob settlement-job -n batch-processing -o jsonpath='{.spec.failedJobsHistoryLimit}') -eq 2 ]
 "
 
-# 3. Image Build (5점)
-# - tar 파일 존재 확인
-check_problem 3 5 "Image Build & Archive" "
-    ls tool-v2.tar
+# 3. Image Build & Push (5점)
+# - 로컬 레지스트리에 이미지 및 태그 존재 확인
+check_problem 3 5 "Image Build & Registry Push" "
+    curl -s http://localhost:5000/v2/internal-tool/tags/list | grep -q 'v2.0'
 "
 
 # 4. Network Policy (7점)

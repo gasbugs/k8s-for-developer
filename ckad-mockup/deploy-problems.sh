@@ -13,6 +13,17 @@ for ns in "${namespaces[@]}"; do
   kubectl create ns $ns --dry-run=client -o yaml | kubectl apply -f -
 done
 
+# 1.1 로컬 레지스트리 구성 (Problem 3용)
+if [ $(docker ps -q -f name=ckad-registry | wc -l) -eq 0 ]; then
+  if [ $(docker ps -aq -f name=ckad-registry | wc -l) -eq 1 ]; then
+    docker rm -f ckad-registry
+  fi
+  docker run -d --name ckad-registry -p 5000:5000 registry:2
+  echo "로컬 레지스트리(ckad-registry)가 시작되었습니다."
+else
+  echo "로컬 레지스트리(ckad-registry)가 이미 실행 중입니다."
+fi
+
 # 2. 문제별 기초 리소스 생성
 kubectl apply -f - <<EOF
 # [Problem 1] Canary Deployment 배경: v1 배포 및 서비스

@@ -57,7 +57,7 @@ EOF
 kubectl apply -f cronjob.yaml
 rm cronjob.yaml
 
-# 3. Image Build
+# 3. Image Build & Push
 echo "[Problem 3] Building Docker Image..."
 # Create a dummy Dockerfile if not exists
 if [ ! -f Dockerfile ]; then
@@ -65,8 +65,9 @@ if [ ! -f Dockerfile ]; then
     echo "ARG VERSION" >> Dockerfile
     echo "RUN echo \$VERSION > /version" >> Dockerfile
 fi
-docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 . > /dev/null 2>&1
-docker save -o tool-v2.tar internal-tool:v2.0 > /dev/null 2>&1
+docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
+docker tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
+docker push localhost:5000/internal-tool:v2.0
 echo "Image built and saved to tool-v2.tar"
 
 # 4. Network Policy
