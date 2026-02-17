@@ -19,9 +19,6 @@ bash setup.sh
 ## 실습 문제
 
 
-## 실습 문제
-
-실습 문제는 [problems.md](problems.md) 파일에서 확인할 수 있습니다.
 
 ## 채점 (Scoring)
 

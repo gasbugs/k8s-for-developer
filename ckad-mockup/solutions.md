@@ -2,7 +2,7 @@
 
 이 문서는 `problems.md`에 제시된 문제들에 대한 예시 풀이를 제공합니다. 실제 시험 환경이나 클러스터 설정에 따라 세부 내용은 달라질 수 있습니다.
 
-> **💡 팁:** 시험에서는 시간을 절약하기 위해 `kubectl`의 imperative command를 최대한 활용하고, 필요한 경우 `-o yaml --dry-run=client` 옵션을 사용하여 YAML 템플릿을 생성하세요.
+> **💡 팁:** 시험에서는 `kubectl` 명령어를 통해 뼈대를 생성하고(`--dry-run=client -o yaml`), 부족한 부분은 **Kubernetes 공식 문서**에서 검색하여 보완하는 방식이 가장 효율적입니다. 아래 풀이는 공식 문서를 활용하는 방법에 중점을 둡니다.
 
 ---
 
@@ -11,16 +11,15 @@
 **솔루션:**
 
 1.  Kubernetes 공식 문서 검색:
-    - [kubernetes.io/ko/docs/concepts/workloads/controllers/deployment](https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/) 페이지로 이동하거나 검색창에 `Deployment`를 검색합니다.
+    - 검색어: `Deployment`
+    - 문서: [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
     - 예제 YAML을 복사하여 `app-v2.yaml` 파일을 생성합니다.
 
 2.  `app-v2.yaml` 수정:
     - 복사한 YAML을 문제의 요구사항에 맞게 수정합니다.
-    - `metadata.name`을 `app-v2`로 변경.
-    - `replicas`를 `1`로 설정.
-    - `selector.matchLabels`에 `app: web-server`와 `version: v2` 추가 (Deployment 식별용).
-    - `template.metadata.labels`에 `app: web-server` (서비스 연동용)와 `version: v2` (식별용) 추가.
-    - `spec.template.spec.containers`의 `image`를 `nginx:1.25`로 변경.
+    - `replicas`: `1`
+    - `matchLabels` 및 `template.labels`: `app: web-server`, `version: v2` 추가
+    - `image`: `nginx:1.25`
 
     **최종 YAML 예시:**
     ```yaml
@@ -28,18 +27,18 @@
     kind: Deployment
     metadata:
       name: app-v2
-      namespace: production-webapp # 네임스페이스 주의
+      namespace: production-webapp
     spec:
       replicas: 1
       selector:
         matchLabels:
           app: web-server
-          version: v2  # Deployment가 자신의 파드만 관리하도록 고유 라벨 추가
+          version: v2
       template:
         metadata:
           labels:
-            app: web-server # 서비스가 트래픽을 보낼 공통 라벨
-            version: v2     # 식별용 라벨
+            app: web-server
+            version: v2
         spec:
           containers:
           - name: nginx
@@ -52,14 +51,9 @@
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 1. app-v2 파드가 정상적으로 생성되었는지 확인
 kubectl get pods -n production-webapp -l version=v2
-
-# 2. 서비스(my-app-service)가 v1과 v2 파드를 모두 엔드포인트로 잡고 있는지 확인
 kubectl get ep my-app-service -n production-webapp
-# (Endpoint 주소 개수가 v1(9개) + v2(1개) = 총 10개여야 함)
 ```
 
 ---
@@ -68,32 +62,20 @@ kubectl get ep my-app-service -n production-webapp
 
 **솔루션:**
 
-1.  CronJob 생성:
-    ```bash
-    kubectl create cronjob settlement-job --image=busybox --schedule="30 2 * * 1" -n batch-processing --dry-run=client -o yaml > cronjob.yaml
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `CronJob`
+    - 문서: [Running Automated Tasks with a CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
+    - 예제 YAML 복사하여 `cronjob.yaml` 생성.
 
-2.  `cronjob.yaml` 수정하여 `historyLimit` 및 `command` 추가:
-    ```yaml
-    apiVersion: batch/v1
-    kind: CronJob
-    metadata:
-      name: settlement-job
-      namespace: batch-processing
-    spec:
-      schedule: "30 2 * * 1"
-      successfulJobsHistoryLimit: 5
-      failedJobsHistoryLimit: 2
-      jobTemplate:
-        spec:
-          template:
-            spec:
-              containers:
-              - name: settlement-job
-                image: busybox
-                command: ["/bin/sh", "-c", "echo 'Processing...'"]
-              restartPolicy: OnFailure
-    ```
+2.  `cronjob.yaml` 수정:
+    - `metadata.name`: `settlement-job`
+    - `metadata.namespace`: `batch-processing`
+    - `spec.schedule`: `"30 2 * * 1"`
+    - `spec.successfulJobsHistoryLimit`: `5`
+    - `spec.failedJobsHistoryLimit`: `2`
+    - `spec.jobTemplate.spec.template.spec.containers` 수정:
+        - `image`: `busybox`
+        - `command`: `["/bin/sh", "-c", "echo 'Processing...'"]`
 
 3.  적용:
     ```bash
@@ -101,15 +83,8 @@ kubectl get ep my-app-service -n production-webapp
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 1. CronJob의 스케줄 및 HistoryLimit 설정 확인
 kubectl describe cronjob settlement-job -n batch-processing | grep -E "Schedule|History Limit"
-
-# 2. 강제로 Job을 하나 생성하여 동작 확인 (선택 사항)
-kubectl create job --from=cronjob/settlement-job test-job -n batch-processing
-kubectl get pods -n batch-processing
-kubectl logs -n batch-processing job/test-job
 ```
 
 ---
@@ -118,21 +93,22 @@ kubectl logs -n batch-processing job/test-job
 
 **솔루션:**
 
-1.  이미지 빌드:
-    ```bash
-    # Dockerfile이 있는 디렉토리에서 실행
-    docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
-    ```
+*이 문제는 Kubernetes 리소스가 아닌 컨테이너 툴(Docker/Podman) 사용 능력을 평가합니다.*
 
-2.  이미지 저장 (tar 아카이브):
+1.  `docker build` 설명서 확인 (또는 `--help`):
+    - `docker build --help`
+
+2.  명령어 실행:
     ```bash
+    # 빌드
+    docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
+    
+    # 아카이브 저장
     docker save -o tool-v2.tar internal-tool:v2.0
     ```
 
 **검증 (Validation):**
-
 ```bash
-# tar 파일이 생성되었는지 확인
 ls -lh tool-v2.tar
 ```
 
@@ -142,37 +118,27 @@ ls -lh tool-v2.tar
 
 **솔루션:**
 
-1.  기존 정책 확인:
-    ```bash
-    kubectl get netpol -n database-tier
-    kubectl describe netpol db-access-policy -n database-tier
-    ```
-    (출력에서 `ingress` 규칙의 `podSelector`가 `role: db-client`를 요구하는지 확인)
+1.  Kubernetes 공식 문서 검색 (개념 확인):
+    - 검색어: `NetworkPolicy`
+    - 문서: [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+    - 문서를 통해 `podSelector`와 `ingress` 규칙의 작동 방식을 이해합니다.
 
-2.  `backend-tier`의 `api-server` 파드에 레이블 추가:
-    Deployment를 수정하여 파드 템플릿에 레이블을 추가합니다.
+2.  기존 정책 확인:
+    ```bash
+    kubectl get netpol db-access-policy -n database-tier -o yaml
+    ```
+    - `spec.ingress.from.podSelector.matchLabels`에 `role: db-client`가 있는지 확인.
+
+3.  파드(Deployment) 수정:
+    - 문서에서 파드 레이블 수정 방법을 찾거나 `kubectl edit` 사용.
     ```bash
     kubectl edit deployment api-server -n backend-tier
     ```
-    
-    `spec.template.metadata.labels` 섹션에 `role: db-client` 추가:
-    ```yaml
-      template:
-        metadata:
-          labels:
-            app: api-server
-            role: db-client # 추가
-    ```
+    - `spec.template.metadata.labels`에 `role: db-client` 추가.
 
 **검증 (Validation):**
-
 ```bash
-# api-server 파드가 재생성된 후 레이블이 적용되었는지 확인
-kubectl get pods -n backend-tier --show-labels
-
-# (선택) 실제로 통신이 되는지 테스트 (NetPol이 Egress를 막지 않는다면)
-kubectl exec -it -n backend-tier deploy/api-server -- nc -zv database.database-tier 6379 
-# (Open 또는 Connected 메시지가 나와야 함)
+kubectl get pods -n backend-tier --show-labels | grep db-client
 ```
 
 ---
@@ -181,32 +147,31 @@ kubectl exec -it -n backend-tier deploy/api-server -- nc -zv database.database-t
 
 **솔루션:**
 
-1.  Secret 생성:
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `Secret`, `environment variable secret`
+    - 문서: [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/) -> "Using Secrets as environment variables" 섹션 참고.
+
+2.  Secret 생성 (Imperative 방식 권장):
     ```bash
     kubectl create secret generic api-auth --from-literal=api-token=secret-value-123 -n secure-api
     ```
 
-2.  Deployment 수정:
-    ```bash
-    kubectl edit deployment api-server -n secure-api
-    ```
-    
-    컨테이너 `env` 섹션 추가:
-    ```yaml
-        env:
+3.  Deployment 수정 (문서 예제 참고):
+    - 문서에서 `valueFrom`, `secretKeyRef` 구문 복사.
+    - `kubectl edit deployment api-server -n secure-api` 실행.
+    - `env` 섹션 추가:
+      ```yaml
+      env:
         - name: SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
               name: api-auth
               key: api-token
-    ```
+      ```
 
 **검증 (Validation):**
-
 ```bash
-# 파드 내부에서 환경변수 확인
 kubectl exec -n secure-api deploy/api-server -- env | grep SERVICE_TOKEN
-# SERVICE_TOKEN=secret-value-123 출력 확인
 ```
 
 ---
@@ -215,36 +180,26 @@ kubectl exec -n secure-api deploy/api-server -- env | grep SERVICE_TOKEN
 
 **솔루션:**
 
-1.  파드 수정 (파드는 직접 수정 시 일부 필드만 변경 가능하므로, YAML 추출 후 재생성하거나 Deployment라면 Deployment 수정):
-    ```bash
-    kubectl get pod web-app -n hardened-apps -o yaml > web-app.yaml
-    kubectl delete pod web-app -n hardened-apps
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `SecurityContext`
+    - 문서: [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
 
-2.  `web-app.yaml` 수정:
+2.  파드 YAML 수정:
+    - 문서 예제를 참고하여 `securityContext` 필드 작성.
+    - `kubectl get pod web-app -n hardened-apps -o yaml > web-app.yaml` 후 수정.
     ```yaml
     spec:
       containers:
       - name: web-app
-        image: ...
         securityContext:
           allowPrivilegeEscalation: false
           runAsUser: 2000
     ```
-
-3.  재생성:
-    ```bash
-    kubectl apply -f web-app.yaml
-    ```
+    - 기존 파드 삭제 후 재생성 (`kubectl replace --force -f web-app.yaml`).
 
 **검증 (Validation):**
-
 ```bash
-# 1. 실행 유저 확인 (id=2000 이어야 함)
-kubectl exec -n hardened-apps web-app -- id
-
-# 2. SecurityContext 설정 확인
-kubectl get pod web-app -n hardened-apps -o yaml | grep allowPrivilegeEscalation
+kubectl get pod web-app -n hardened-apps -o jsonpath='{.spec.containers[0].securityContext}'
 ```
 
 ---
@@ -253,25 +208,19 @@ kubectl get pod web-app -n hardened-apps -o yaml | grep allowPrivilegeEscalation
 
 **솔루션:**
 
-1.  ServiceAccount 생성:
-    ```bash
-    kubectl create sa event-watcher-sa -n infra-monitoring
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `RBAC`
+    - 문서: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
-2.  Role 생성:
-    ```bash
-    kubectl create role event-watcher-role --verb=get,list,watch --resource=events -n infra-monitoring
-    ```
+2.  리소스 생성 (문서의 Role, RoleBinding 예제 활용 가능하지만, Imperative가 빠름):
+    - **ServiceAccount:** `kubectl create sa event-watcher-sa -n infra-monitoring`
+    - **Role:** `kubectl create role event-watcher-role --verb=get,list,watch --resource=events -n infra-monitoring`
+    - **RoleBinding:** `kubectl create rolebinding event-watcher-binding --role=event-watcher-role --serviceaccount=infra-monitoring:event-watcher-sa -n infra-monitoring`
 
-3.  RoleBinding 생성:
-    ```bash
-    kubectl create rolebinding event-watcher-binding --role=event-watcher-role --serviceaccount=infra-monitoring:event-watcher-sa -n infra-monitoring
-    ```
+    *문서 활용시:* YAML 예제를 복사하여 `subjects`(ServiceAccount), `roleRef`(Role), `rules`(resources, verbs) 부분을 수정.
 
 **검증 (Validation):**
-
 ```bash
-# auth can-i 명령어로 권한 확인 ('yes' 출력 되어야 함)
 kubectl auth can-i list events --as=system:serviceaccount:infra-monitoring:event-watcher-sa -n infra-monitoring
 ```
 
@@ -281,38 +230,28 @@ kubectl auth can-i list events --as=system:serviceaccount:infra-monitoring:event
 
 **솔루션:**
 
-1.  `old-deploy.yaml` 파일 수정:
-    - `apiVersion`: `extensions/v1beta1` -> `apps/v1`
-    - `spec.selector` 추가 (Deployment 스펙 내):
-    
-    ```yaml
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: old-app
-      namespace: migration-test
-    spec:
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `Deployment`
+    - 문서의 최상단에서 현재 지원되는 `apiVersion` 확인 (`apps/v1`).
+    - `apps/v1` Deployment 스펙에서 `selector`가 필수인지 확인.
+
+2.  `old-deploy.yaml` 수정:
+    - `apiVersion: apps/v1`으로 변경.
+    - `spec.selector` 추가 (문서 예제 참고):
+      ```yaml
       selector:
         matchLabels:
-          app: old-app # spec.template.metadata.labels와 일치해야 함
-      template:
-        metadata:
-          labels:
-            app: old-app
-    ...
-    ```
+          app: old-app
+      ```
 
-2.  적용 (선택):
+3.  적용:
     ```bash
     kubectl apply -f old-deploy.yaml
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 배포된 리소스의 API Version 확인
-kubectl get deploy old-app -n migration-test -o yaml | grep apiVersion
-# apiVersion: apps/v1 확인
+kubectl get deploy old-app -n migration-test
 ```
 
 ---
@@ -325,37 +264,24 @@ kubectl get deploy old-app -n migration-test -o yaml | grep apiVersion
     ```bash
     kubectl describe resourcequota -n resource-mgmt
     ```
-    (예: Hard limits가 CPU 1, Memory 1Gi이고 사용량이 0이라면)
 
-2.  파드 생성 YAML 작성 (50% 이하 설정):
-    ```yaml
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      name: quota-pod
-      namespace: resource-mgmt
-    spec:
-      containers:
-      - name: nginx
-        image: nginx
-        resources:
-          requests:
-            cpu: "0.5"
-            memory: "512Mi"
-          limits:
-            cpu: "0.5"
-            memory: "512Mi"
+2.  Kubernetes 공식 문서 검색:
+    - 검색어: `Resource Quota` 또는 `Pod resource limits`
+    - 문서: [Manage Resources for Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+    - 예제 YAML 복사.
+
+3.  파드 YAML 작성:
+    - 복사한 예제에서 `resources.requests`와 `limits` 섹션을 수정.
+    - `memory: "512Mi"`, `cpu: "0.5"` (1Gi, 1CPU의 50%).
+
+4.  적용:
+    ```bash
+    kubectl apply -f pod.yaml
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 1. 파드가 Running 상태인지 확인
-kubectl apply -f quota-pod.yaml
 kubectl get pod quota-pod -n resource-mgmt
-
-# 2. 리소스 쿼터 사용량 증가 확인
-kubectl describe resourcequota -n resource-mgmt
 ```
 
 ---
@@ -364,17 +290,17 @@ kubectl describe resourcequota -n resource-mgmt
 
 **솔루션:**
 
-1.  로그 확인 및 파일 저장:
+1.  `kubectl logs` 도움말 확인:
+    - `kubectl logs --help`
+    - 멀티 컨테이너 파드의 경우 `-c` 옵션 사용법 확인.
+
+2.  명령어 실행:
     ```bash
     kubectl logs multi-pod -c sidecar -n log-analysis > /tmp/sidecar_error.log
     ```
-    
-    (만약 특정 에러 라인만 추출해야 한다면 `grep` 사용: `kubectl logs ... | grep ERROR > ...`)
 
 **검증 (Validation):**
-
 ```bash
-# 저장된 파일 내용 확인
 cat /tmp/sidecar_error.log
 ```
 
@@ -384,23 +310,16 @@ cat /tmp/sidecar_error.log
 
 **솔루션:**
 
-1.  Ingress YAML 작성:
-    ```bash
-    kubectl create ingress main-ingress -n traffic-mgmt --class=nginx \
-      --rule="/api=api-service:80" \
-      --rule="/=web-service:80" \
-      --dry-run=client -o yaml > ingress.yaml
-    ```
-    
-    **YAML 예시:**
-    ```yaml
-    apiVersion: networking.k8s.io/v1
-    kind: Ingress
-    metadata:
-      name: main-ingress
-      namespace: traffic-mgmt
-    spec:
-      ingressClassName: nginx
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `Ingress`
+    - 문서: [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+    - "Minimal Ingress resource" 또는 "Simple fanout" 예제 YAML 복사.
+
+2.  `ingress.yaml` 작성 및 수정:
+    - `metadata.name`, `namespace` 설정.
+    - `spec.ingressClassName: nginx` 추가.
+    - `rules` 섹션 수정:
+      ```yaml
       rules:
       - http:
           paths:
@@ -418,18 +337,15 @@ cat /tmp/sidecar_error.log
                 name: web-service
                 port:
                   number: 80
-    ```
+      ```
 
-2.  적용:
+3.  적용:
     ```bash
     kubectl apply -f ingress.yaml
     ```
 
 **검증 (Validation):**
-
 ```bash
-# Ingress 생성 확인 및 Address 할당 확인 (Kind 환경 등에서는 시간이 걸릴 수 있음)
-kubectl get ingress -n traffic-mgmt
 kubectl describe ingress main-ingress -n traffic-mgmt
 ```
 
@@ -439,26 +355,19 @@ kubectl describe ingress main-ingress -n traffic-mgmt
 
 **솔루션:**
 
-1.  서비스와 파드 레이블 확인:
-    ```bash
-    kubectl get pod -n svc-discovery --show-labels
-    # (예: app=backend-v1)
-    kubectl get svc -n svc-discovery -o yaml
-    # (예: selector: app=frontend-v1 -> 불일치 확인)
-    ```
+1.  Kubernetes 공식 문서 검색 (Service 정의 확인):
+    - 검색어: `Service`
+    - 문서: [Service](https://kubernetes.io/docs/concepts/services-networking/service/) -> "Defining a Service" 섹션.
+    - `selector`가 파드의 레이블과 일치해야 함을 확인.
 
-2.  서비스 수정:
-    ```bash
-    kubectl edit svc backend-svc -n svc-discovery
-    ```
-    `selector`를 `app: backend-v1`으로 수정.
+2.  상태 확인 및 수정:
+    - 파드 레이블 확인: `kubectl get pod -n svc-discovery --show-labels`
+    - 서비스 수정: `kubectl edit svc backend-svc -n svc-discovery`
+    - `selector` 값을 파드 레이블과 일치시킴 (`app: backend-v1`).
 
 **검증 (Validation):**
-
 ```bash
-# 서비스에 Endpoints가 잡혔는지 확인
 kubectl get ep backend-svc -n svc-discovery
-# (IP 목록이 나와야 함, <none>이면 실패)
 ```
 
 ---
@@ -467,37 +376,34 @@ kubectl get ep backend-svc -n svc-discovery
 
 **솔루션:**
 
-1.  이미지 업데이트:
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `Rolling Update`, `Deployment strategy`
+    - 문서: [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) -> "Rolling Update Deployment" 섹션.
+
+2.  업데이트 실행:
     ```bash
     kubectl set image deployment/web-deploy nginx=nginx:1.26 -n update-strategy
     ```
 
-2.  MaxUnavailable 설정 (Deployment 수정):
+3.  전략 수정 (YAML 문서 예제 참고):
     ```bash
     kubectl edit deployment web-deploy -n update-strategy
     ```
-    `spec.strategy.rollingUpdate` 섹션 수정/추가:
-    ```yaml
-    strategy:
-      type: RollingUpdate
-      rollingUpdate:
-        maxUnavailable: 0
-        maxSurge: 25% # 기본값 또는 필요에 따라 설정
-    ```
+    - `spec.strategy` 부분 수정:
+      ```yaml
+      strategy:
+        rollingUpdate:
+          maxUnavailable: 0
+      ```
 
-3.  롤백 (문제 상황 가정 시):
+4.  롤백:
     ```bash
     kubectl rollout undo deployment/web-deploy -n update-strategy
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 1. 롤링 업데이트 상태 확인
 kubectl rollout status deployment/web-deploy -n update-strategy
-
-# 2. 이미지 버전 확인
-kubectl describe deployment web-deploy -n update-strategy | grep Image
 ```
 
 ---
@@ -506,62 +412,23 @@ kubectl describe deployment web-deploy -n update-strategy | grep Image
 
 **솔루션:**
 
-1.  PV 생성:
-    ```yaml
-    apiVersion: v1
-    kind: PersistentVolume
-    metadata:
-      name: task-pv
-    spec:
-      capacity:
-        storage: 1Gi
-      accessModes:
-        - ReadWriteOnce
-      hostPath:
-        path: /mnt/data
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `PersistentVolume`
+    - 문서: [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+    - PV 및 PVC 예제 YAML 복사.
 
-2.  PVC 생성 (`storage-layer` 네임스페이스):
-    ```yaml
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: task-pvc
-      namespace: storage-layer
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
-    ```
+2.  YAML 작성:
+    - `pv.yaml`: `capacity`, `accessModes`, `hostPath` 수정.
+    - `pvc.yaml`: `resources.requests.storage`, `accessModes` 수정.
 
-3.  파드/Deployment에 마운트:
-    ```bash
-    kubectl edit deployment <deploy-name> -n storage-layer
-    ```
-    ```yaml
-    spec:
-      containers:
-      - name: ...
-        volumeMounts:
-        - mountPath: "/mnt/data"
-          name: data-volume
-      volumes:
-      - name: data-volume
-        persistentVolumeClaim:
-          claimName: task-pvc
-    ```
+3.  Deployment 마운트 (문서의 "Mounting PVC" 섹션 참고):
+    - `kubectl edit deployment ...`
+    - `volumes`에 PVC 지정, `containers.volumeMounts`에 경로 지정.
 
 **검증 (Validation):**
-
 ```bash
-# 1. PV와 PVC 상태가 Bound 인지 확인
-kubectl get pv task-pv
-kubectl get pvc task-pvc -n storage-layer
-
-# 2. 파드 내부에 마운트 되었는지 확인
-kubectl exec -n storage-layer <pod-name> -- df -h /mnt/data
+kubectl get pvc -n storage-layer
+kubectl describe pod -n storage-layer | grep Mounts -A 2
 ```
 
 ---
@@ -570,29 +437,25 @@ kubectl exec -n storage-layer <pod-name> -- df -h /mnt/data
 
 **솔루션:**
 
-1.  Deployment/Pod 수정:
-    ```bash
-    kubectl edit deployment <deploy-name> -n availability-test
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `ReadinessProbe`
+    - 문서: [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+    - "Define a readiness HTTP request" 섹션의 YAML 예제 참고.
 
-2.  Readiness Probe 추가:
-    ```yaml
-    spec:
-      containers:
-      - name: ...
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          failureThreshold: 3
-          periodSeconds: 10 # 선택 사항
-    ```
+2.  Deployment 수정:
+    - `kubectl edit deployment ...`
+    - `readinessProbe` 섹션 추가:
+      ```yaml
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 8080
+        failureThreshold: 3
+      ```
 
 **검증 (Validation):**
-
 ```bash
-# 파드 상세 정보에서 Readiness Probe 설정 확인
-kubectl describe pod -n availability-test <pod-name> | grep Readiness
+kubectl get deploy -n availability-test -o yaml | grep readinessProbe -A 5
 ```
 
 ---
@@ -601,35 +464,23 @@ kubectl describe pod -n availability-test <pod-name> | grep Readiness
 
 **솔루션:**
 
-1.  ConfigMap 생성:
+1.  Kubernetes 공식 문서 검색:
+    - 검색어: `ConfigMap`
+    - 문서: [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/) -> "Use a ConfigMap as a file from a Pod" 예제 참고.
+
+2.  ConfigMap 생성:
     ```bash
     kubectl create configmap app-config --from-literal=server.port=8080 -n config-db
     ```
 
-2.  파드 수정 (볼륨 마운트):
-    ```bash
-    kubectl edit pod <pod-name> -n config-db
-    ```
-    (또는 Deployment 수정)
-    ```yaml
-    spec:
-      containers:
-      - name: ...
-        volumeMounts:
-        - name: config-volume
-          mountPath: /etc/config
-      volumes:
-      - name: config-volume
-        configMap:
-          name: app-config
-    ```
+3.  파드/Deployment 수정 (문서 예제 활용):
+    - `kubectl edit pod ...`
+    - `volumes` 섹션에 `configMap` 정의.
+    - `volumeMounts` 섹션에 경로 정의.
 
 **검증 (Validation):**
-
 ```bash
-# 파드 내부 파일 확인
 kubectl exec -n config-db <pod-name> -- cat /etc/config/server.port
-# 8080 출력 확인
 ```
 
 ---
@@ -638,23 +489,16 @@ kubectl exec -n config-db <pod-name> -- cat /etc/config/server.port
 
 **솔루션:**
 
-1.  파드 생성 및 환경변수 주입, 포트 노출:
-    ```bash
-    kubectl run nginx-pod --image=nginx --port=8080 --env="ENV_MODE=production" -n web-server-prod --dry-run=client -o yaml > pod.yaml
-    ```
-    (`--port`는 컨테이너 포트 정보만 메타데이터로 남김, 실제 Nginx 설정을 바꾸진 않지만 문제 요구사항인 '포트 노출' 명시)
+1.  Kubernetes 공식 문서 검색:
+    - 파드 생성에 대한 기본 문서는 [Pods](https://kubernetes.io/docs/concepts/workloads/pods/)를 참고하나, 이 경우는 `kubectl run` 명령어가 더 효율적.
+    - 문서 검색: `kubectl run`
 
-2.  적용:
+2.  명령어 실행:
     ```bash
-    kubectl apply -f pod.yaml
+    kubectl run nginx-pod --image=nginx --port=8080 --env="ENV_MODE=production" -n web-server-prod
     ```
 
 **검증 (Validation):**
-
 ```bash
-# 1. 환경변수 확인
-kubectl exec -n web-server-prod nginx-pod -- env | grep ENV_MODE
-
-# 2. 포트 설정 확인 (yaml 확인)
-kubectl get pod nginx-pod -n web-server-prod -o yaml | grep containerPort
+kubectl get pod nginx-pod -n web-server-prod -o yaml
 ```
