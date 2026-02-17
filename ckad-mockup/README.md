@@ -14,7 +14,7 @@ bash setup.sh
 1. `kind-mockup-config.yaml` 설정을 사용하여 Kind 클러스터를 생성합니다.
 2. Cilium CNI를 설치합니다.
 3. `traefik-values.yaml`을 사용하여 Traefik Ingress Controller를 설치합니다.
-4. `setup-lab.sh`를 실행하여 CKAD 모의고사용 네임스페이스와 리소스를 생성합니다.
+4. `deploy-problems.sh`를 실행하여 CKAD 모의고사용 네임스페이스와 리소스를 생성합니다.
 
 
 ## 실습 문제

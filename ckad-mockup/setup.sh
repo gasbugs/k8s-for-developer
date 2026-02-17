@@ -22,6 +22,6 @@ helm repo update
 helm upgrade --install traefik traefik/traefik --namespace traefik --create-namespace --values traefik-values.yaml
 
 echo "4. Setting up Lab Environment..."
-bash setup-lab.sh
+bash deploy-problems.sh
 
 echo "Setup Complete!"
