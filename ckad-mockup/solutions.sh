@@ -161,8 +161,7 @@ kubectl apply -f quota-pod.yaml
 rm quota-pod.yaml
 
 # 10. Multi-container Logs
-echo "[Problem 10] Extracting Logs..."
-kubectl logs multi-pod -c sidecar -n log-analysis > /tmp/sidecar_error.log 2>/dev/null || echo "Pod not ready yet"
+# Moved to end of script to ensure pod is ready
 
 # 11. Ingress
 echo "[Problem 11] Creating Ingress..."
@@ -252,6 +251,16 @@ kubectl wait --for=condition=available deployment --all -n svc-discovery --timeo
 kubectl wait --for=condition=available deployment --all -n update-strategy --timeout=60s
 kubectl wait --for=condition=available deployment --all -n storage-layer --timeout=60s
 kubectl wait --for=condition=available deployment --all -n availability-test --timeout=60s
+
+# 10. Multi-container Logs (Moved here to ensure pod is ready)
+echo "[Problem 10] Waiting for multi-pod to be ready..."
+kubectl wait --for=condition=ready pod multi-pod -n log-analysis --timeout=60s
+echo "[Problem 10] Extracting Logs..."
+# Ensure file does not exist or is writable
+if [ -f /tmp/sidecar_error.log ]; then
+    rm -f /tmp/sidecar_error.log 2>/dev/null || echo "Warning: Cannot remove existing /tmp/sidecar_error.log"
+fi
+kubectl logs multi-pod -c sidecar -n log-analysis > /tmp/sidecar_error.log 2>/dev/null || echo "Failed to get logs"
 
 # 15. Readiness Probe
 echo "[Problem 15] Adding Readiness Probe..."
