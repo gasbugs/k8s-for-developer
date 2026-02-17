@@ -10,29 +10,31 @@
 
 **솔루션:**
 
-1.  `app-v2` Deployment 생성 (Dry-run으로 YAML 추출 후 수정):
-    ```bash
-    kubectl create deployment app-v2 --image=nginx:1.25 --replicas=1 -n production-webapp --dry-run=client -o yaml > app-v2.yaml
-    ```
+1.  Kubernetes 공식 문서 검색:
+    - [kubernetes.io/ko/docs/concepts/workloads/controllers/deployment](https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/) 페이지로 이동하거나 검색창에 `Deployment`를 검색합니다.
+    - 예제 YAML을 복사하여 `app-v2.yaml` 파일을 생성합니다.
 
 2.  `app-v2.yaml` 수정:
-    - `labels`에 `app: web-server`와 `version: v2` 추가.
-    - `selector.matchLabels`는 `app` 레이블만 포함하거나 독자적인 식별자를 가져야 함 (Deployment는 자신의 파드만 관리해야 하므로, v1과 겹치지 않는 고유 라벨이 필요함. 하지만 문제 의도가 **Service**가 두 버전을 모두 가리키게 하는 것이므로, 파드 템플릿의 라벨에 주의해야 함).
+    - 복사한 YAML을 문제의 요구사항에 맞게 수정합니다.
+    - `metadata.name`을 `app-v2`로 변경.
+    - `replicas`를 `1`로 설정.
+    - `selector.matchLabels`에 `app: web-server`와 `version: v2` 추가 (Deployment 식별용).
+    - `template.metadata.labels`에 `app: web-server` (서비스 연동용)와 `version: v2` (식별용) 추가.
+    - `spec.template.spec.containers`의 `image`를 `nginx:1.25`로 변경.
 
-    **중요:** Deployment의 셀렉터는 해당 Deployment가 관리할 파드만 선택해야 합니다. 따라서 `app: web-server`를 공통으로 쓰더라도, Deployment 식별을 위해 고유 라벨(예: `version: v2`)을 셀렉터에 포함하는 것이 안전합니다. 하지만 문제 요구사항 2번은 **"기존 app-v1 파드들이 사용하는 서비스 셀렉터 레이블(`app: web-server`)을 app-v2 파드 템플릿에도 동일하게 설정"** 하라는 것이 핵심입니다.
-
+    **최종 YAML 예시:**
     ```yaml
     apiVersion: apps/v1
     kind: Deployment
     metadata:
       name: app-v2
-      namespace: production-webapp
+      namespace: production-webapp # 네임스페이스 주의
     spec:
       replicas: 1
       selector:
         matchLabels:
           app: web-server
-          version: v2  # Deployment가 자신의 파드만 관리하도록 고유 라벨 추가 권장
+          version: v2  # Deployment가 자신의 파드만 관리하도록 고유 라벨 추가
       template:
         metadata:
           labels:
