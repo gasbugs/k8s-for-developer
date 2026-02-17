@@ -200,6 +200,8 @@ spec:
         image: nginx:1.14
 EOF
 
+# [Problem 14, 15, 16] PVC, ReadinessProbe, ConfigMap 문제 해결을 위한 기초 리소스
+kubectl apply -f - <<EOF
 # [Problem 14] PVC 연결을 위한 Deployment
 apiVersion: apps/v1
 kind: Deployment
@@ -252,7 +254,9 @@ spec:
 EOF
 
 echo "준비 완료: 모든 네임스페이스와 기초 리소스가 생성되었습니다."
+
 # Problem 8: API Version Upgrade (Create old-deploy.yaml)
+# Overwriting any previous old-deploy.yaml
 cat <<YAML > old-deploy.yaml
 apiVersion: extensions/v1beta1
 kind: Deployment
