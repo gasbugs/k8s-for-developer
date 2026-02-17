@@ -18,4 +18,15 @@ bash setup.sh
 
 ## 실습 문제
 
+
+## 실습 문제
+
 실습 문제는 [problems.md](problems.md) 파일에서 확인할 수 있습니다.
+
+## 채점 (Scoring)
+
+문제를 모두 풀었다면 다음 스크립트를 실행하여 점수를 확인할 수 있습니다 (총 100점 만점):
+
+```bash
+bash score.sh
+```
