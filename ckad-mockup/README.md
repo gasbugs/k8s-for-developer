@@ -16,9 +16,18 @@ bash setup.sh
 3. `traefik-values.yaml`을 사용하여 Traefik Ingress Controller를 설치합니다.
 4. `setup-lab.sh`를 실행하여 CKAD 모의고사용 네임스페이스와 리소스를 생성합니다.
 
+
 ## 실습 문제
 
+실습 문제는 [problems.md](problems.md) 파일에서 확인할 수 있습니다.
 
+## 자동 정답 실행 (Solutions)
+
+문제를 직접 풀지 않고 정답 상태로 만들고 싶다면 다음 스크립트를 실행하세요:
+
+```bash
+bash solutions.sh
+```
 
 ## 채점 (Scoring)
 
