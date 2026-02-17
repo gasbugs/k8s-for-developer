@@ -36,3 +36,11 @@ bash solutions.sh
 ```bash
 bash score.sh
 ```
+
+## 환경 제거 (Cleanup)
+
+실습이 끝난 후 Kind 클러스터 및 모든 리소스를 삭제하려면 다음 스크립트를 실행하세요:
+
+```bash
+bash cleanup.sh
+```
