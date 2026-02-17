@@ -1,0 +1,27 @@
+# Kubernetes
+*.kubeconfig
+.kube/
+*.log
+
+# Helm
+*.lock
+*.tgz
+charts/
+
+# OS & Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Terraform (if used later)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Python/Node (if used for apps)
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
