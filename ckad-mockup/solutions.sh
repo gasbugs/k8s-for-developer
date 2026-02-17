@@ -237,34 +237,31 @@ kubectl apply -f pv-pvc.yaml
 rm pv-pvc.yaml
 
 echo "[Problem 14] Mounting PVC..."
-# Assuming deployment name is 'storage-deploy' or similar based on namespace, 
-# but setup-lab.sh created 'storage-app'. I need to verify setup-lab.sh for Problem 14.
-# Let's check setup-lab.sh content or just use 'kubectl get deploy'
-DEPLOY_NAME=$(kubectl get deploy -n storage-layer -o jsonpath='{.items[0].metadata.name}')
-kubectl patch deployment $DEPLOY_NAME -n storage-layer --patch '{"spec": {"template": {"spec": {"volumes": [{"name": "data-volume", "persistentVolumeClaim": {"claimName": "task-pvc"}}], "containers": [{"name": "nginx", "volumeMounts": [{"mountPath": "/mnt/data", "name": "data-volume"}]}]}}}}'
+# Target the deployment created by setup-lab.sh: storage-app
+kubectl patch deployment storage-app -n storage-layer --patch '{"spec": {"template": {"spec": {"volumes": [{"name": "data-volume", "persistentVolumeClaim": {"claimName": "task-pvc"}}], "containers": [{"name": "nginx", "volumeMounts": [{"mountPath": "/mnt/data", "name": "data-volume"}]}]}}}}'
 
 # 15. Readiness Probe
 echo "[Problem 15] Adding Readiness Probe..."
-DEPLOY_NAME=$(kubectl get deploy -n availability-test -o jsonpath='{.items[0].metadata.name}')
-kubectl patch deployment $DEPLOY_NAME -n availability-test --patch '{"spec": {"template": {"spec": {"containers": [{"name": "nginx", "readinessProbe": {"httpGet": {"path": "/healthz", "port": 8080}, "failureThreshold": 3}}]}}}}'
+# Target the deployment created by setup-lab.sh: ready-check-app
+kubectl patch deployment ready-check-app -n availability-test --patch '{"spec": {"template": {"spec": {"containers": [{"name": "web", "readinessProbe": {"httpGet": {"path": "/healthz", "port": 8080}, "failureThreshold": 3}}]}}}}'
 
 # 16. ConfigMap
 echo "[Problem 16] Mounting ConfigMap..."
 kubectl create configmap app-config --from-literal=server.port=8080 -n config-db --dry-run=client -o yaml | kubectl apply -f -
-POD_NAME=$(kubectl get pod -n config-db -o jsonpath='{.items[0].metadata.name}')
-# Pod patching is tricky, usually replace.
-kubectl get pod $POD_NAME -n config-db -o yaml > pod-config.yaml
+# Target the pod created by setup-lab.sh: config-pod
+kubectl get pod config-pod -n config-db -o yaml > pod-config.yaml
 # Simple overwrite for automation
 cat <<EOF > pod-config-fixed.yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: $POD_NAME
+  name: config-pod
   namespace: config-db
 spec:
   containers:
-  - name: nginx
-    image: nginx
+  - name: db-app
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
     volumeMounts:
     - name: config-volume
       mountPath: /etc/config
@@ -273,7 +270,7 @@ spec:
     configMap:
       name: app-config
 EOF
-kubectl delete pod $POD_NAME -n config-db --force --grace-period=0 > /dev/null 2>&1
+kubectl delete pod config-pod -n config-db --force --grace-period=0 > /dev/null 2>&1
 kubectl apply -f pod-config-fixed.yaml
 rm pod-config.yaml pod-config-fixed.yaml
 

@@ -200,6 +200,57 @@ spec:
         image: nginx:1.14
 EOF
 
+# [Problem 14] PVC 연결을 위한 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-app
+  namespace: storage-layer
+spec:
+  selector:
+    matchLabels:
+      app: storage
+  template:
+    metadata:
+      labels:
+        app: storage
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+---
+# [Problem 15] Readiness Probe 설정을 위한 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ready-check-app
+  namespace: availability-test
+spec:
+  selector:
+    matchLabels:
+      app: ready-check
+  template:
+    metadata:
+      labels:
+        app: ready-check
+    spec:
+      containers:
+      - name: web
+        image: nginx
+---
+# [Problem 16] ConfigMap 마운트를 위한 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-pod
+  namespace: config-db
+spec:
+  containers:
+  - name: db-app
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
+EOF
+
 echo "준비 완료: 모든 네임스페이스와 기초 리소스가 생성되었습니다."
 # Problem 8: API Version Upgrade (Create old-deploy.yaml)
 cat <<YAML > old-deploy.yaml
