@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:1.24
+        image: httpd:2.4
 ---
 apiVersion: v1
 kind: Service

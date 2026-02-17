@@ -4,7 +4,7 @@
 
 ### **1. 카나리 배포 (Canary Deployment) 수행 🐤**
 
-- **상황:** `production-webapp` 네임스페이스에서 운영 중인 `app-v1`에 신규 버전 `app-v2`를 일부 배포하여 검증해야 합니다.
+- **상황:** `production-webapp` 네임스페이스에서 운영 중인 `app-v1` (이미지: `httpd`)에 신규 버전 `app-v2`를 일부 배포하여 검증해야 합니다.
 - **요구사항:**
     1. `production-webapp` 네임스페이스 내에 `app-v2` Deployment를 생성하십시오. (이미지: `nginx:1.25`)
     2. 기존 `app-v1` 파드들이 사용하는 서비스 셀렉터 레이블(`app: web-server`)을 `app-v2` 파드 템플릿에도 동일하게 설정하십시오.
