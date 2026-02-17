@@ -2,6 +2,11 @@
 
 이 디렉토리는 CKAD 모의고사 환경을 설정하기 위한 파일들을 포함하고 있습니다.
 
+## 사전 준비 (Prerequisites)
+
+실습 환경을 구축하기 전에 필요한 도구들(Docker, Kind, Kubectl, Helm, Cilium CLI)이 설치되어 있어야 합니다.
+자세한 설치 및 버전 확인 방법은 [PREREQUISITES.md](PREREQUISITES.md) 파일을 참고하세요.
+
 ## 빠른 시작
 
 다음 명령어를 실행하여 전체 환경을 설정하세요:
