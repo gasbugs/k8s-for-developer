@@ -218,6 +218,7 @@ spec:
     storage: 1Gi
   accessModes:
     - ReadWriteOnce
+  storageClassName: manual
   hostPath:
     path: /mnt/data
 ---
@@ -229,6 +230,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: manual
   resources:
     requests:
       storage: 1Gi
@@ -239,6 +241,17 @@ rm pv-pvc.yaml
 echo "[Problem 14] Mounting PVC..."
 # Target the deployment created by setup-lab.sh: storage-app
 kubectl patch deployment storage-app -n storage-layer --patch '{"spec": {"template": {"spec": {"volumes": [{"name": "data-volume", "persistentVolumeClaim": {"claimName": "task-pvc"}}], "containers": [{"name": "nginx", "volumeMounts": [{"mountPath": "/mnt/data", "name": "data-volume"}]}]}}}}'
+
+# Wait for resources to be ready
+echo "Waiting for resources to be ready..."
+kubectl wait --for=condition=available deployment --all -n production-webapp --timeout=60s
+kubectl wait --for=condition=available deployment --all -n backend-tier --timeout=60s
+kubectl wait --for=condition=available deployment --all -n secure-api --timeout=60s
+kubectl wait --for=condition=ready pod --all -n resource-mgmt --timeout=60s
+kubectl wait --for=condition=available deployment --all -n svc-discovery --timeout=60s
+kubectl wait --for=condition=available deployment --all -n update-strategy --timeout=60s
+kubectl wait --for=condition=available deployment --all -n storage-layer --timeout=60s
+kubectl wait --for=condition=available deployment --all -n availability-test --timeout=60s
 
 # 15. Readiness Probe
 echo "[Problem 15] Adding Readiness Probe..."

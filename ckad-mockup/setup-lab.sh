@@ -251,6 +251,55 @@ spec:
   - name: db-app
     image: busybox
     command: ["sh", "-c", "sleep 3600"]
+---
+# [Problem 4] Network Policy 테스트용 Pod (backend-tier)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: backend-tier
+spec:
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+      - name: api-server
+        image: nginx
+---
+# [Problem 5] Secret 환경변수 주입용 Deployment (secure-api)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: secure-api
+spec:
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+      - name: api-server
+        image: nginx
+---
+# [Problem 6] Security Context 설정을 위한 Pod (hardened-apps)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-app
+  namespace: hardened-apps
+spec:
+  containers:
+  - name: web-app
+    image: nginx
 EOF
 
 echo "준비 완료: 모든 네임스페이스와 기초 리소스가 생성되었습니다."
