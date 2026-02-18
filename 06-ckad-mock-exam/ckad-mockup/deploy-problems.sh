@@ -1,4 +1,15 @@
 #!/bin/bash
+set -e
+
+# 컨테이너 엔진 감지
+if docker info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="docker"
+elif podman info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="podman"
+else
+    echo "오류: Docker 또는 Podman을 찾을 수 없습니다. 하나를 설치해 주세요."
+    exit 1
+fi
 
 # 1. 모든 네임스페이스 생성
 namespaces=(
@@ -14,11 +25,11 @@ for ns in "${namespaces[@]}"; do
 done
 
 # 1.1 로컬 레지스트리 구성 (Problem 3용)
-if [ $(docker ps -q -f name=ckad-registry | wc -l) -eq 0 ]; then
-  if [ $(docker ps -aq -f name=ckad-registry | wc -l) -eq 1 ]; then
-    docker rm -f ckad-registry
+if [ $($CONTAINER_ENGINE ps -q -f name=ckad-registry | wc -l) -eq 0 ]; then
+  if [ $($CONTAINER_ENGINE ps -aq -f name=ckad-registry | wc -l) -eq 1 ]; then
+    $CONTAINER_ENGINE rm -f ckad-registry
   fi
-  docker run -d --name ckad-registry -p 5000:5000 registry:2
+  $CONTAINER_ENGINE run -d --name ckad-registry -p 5000:5000 registry:2
   echo "로컬 레지스트리(ckad-registry)가 시작되었습니다."
 else
   echo "로컬 레지스트리(ckad-registry)가 이미 실행 중입니다."

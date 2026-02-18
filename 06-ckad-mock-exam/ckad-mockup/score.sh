@@ -1,4 +1,15 @@
 #!/bin/bash
+set -e
+
+# 컨테이너 엔진 감지
+if docker info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="docker"
+elif podman info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="podman"
+else
+    echo "오류: Docker 또는 Podman을 찾을 수 없습니다. 하나를 설치해 주세요."
+    exit 1
+fi
 
 # 초기화
 SCORE=0
@@ -69,7 +80,7 @@ check_problem 2 6 "CronJob Setup" "
 check_problem 3 5 "Image Build & Registry Push" "
     curl -s http://localhost:5000/v2/internal-tool/tags/list | grep -q 'v2.0' && \
     [ -f tool-v2.tar ] && \
-    docker run --rm internal-tool:v2.0 cat /version | grep -q '2.0'
+    $CONTAINER_ENGINE run --rm internal-tool:v2.0 cat /version | grep -q '2.0'
 "
 
 # 4. Network Policy (7점)

@@ -4,7 +4,7 @@
 
 ## 사전 준비 (Prerequisites)
 
-실습 환경을 구축하기 전에 필요한 도구들(Docker, Kind, Kubectl, Helm, Cilium CLI)이 설치되어 있어야 합니다.
+실습 환경을 구축하기 전에 필요한 도구들(Docker 또는 Podman, Kind, Kubectl, Helm, Cilium CLI)이 설치되어 있어야 합니다.
 자세한 설치 및 버전 확인 방법은 [PREREQUISITES.md](PREREQUISITES.md) 파일을 참고하세요.
 
 ## 빠른 시작

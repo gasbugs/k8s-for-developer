@@ -117,19 +117,22 @@ kubectl describe cronjob settlement-job -n batch-processing | grep -E "Schedule|
 
 *이 문제는 Kubernetes 리소스가 아닌 컨테이너 툴(Docker/Podman) 사용 능력을 평가합니다.*
 
-1.  명령어 실행:
+1.  명령어 실행 (Docker 또는 Podman 사용):
     ```bash
+    # 환경에 따라 docker 또는 podman 명령어를 사용하세요.
+    ENGINE="docker" # 또는 "podman"
+    
     # 빌드
-    docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
+    $ENGINE build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
     
     # 로컬 레지스트리용 태그 설정
-    docker tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
+    $ENGINE tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
     
     # 푸시
-    docker push localhost:5000/internal-tool:v2.0
+    $ENGINE push localhost:5000/internal-tool:v2.0
 
     # 이미지 아카이브 저장
-    docker save -o tool-v2.tar internal-tool:v2.0
+    $ENGINE save -o tool-v2.tar internal-tool:v2.0
     ```
 
 **검증 (Validation):**
@@ -141,7 +144,7 @@ curl -s http://localhost:5000/v2/internal-tool/tags/list
 ls -lh tool-v2.tar
 
 # 이미지 내부 버전 확인
-docker run --rm internal-tool:v2.0 cat /version
+$ENGINE run --rm internal-tool:v2.0 cat /version
 ```
 
 ---

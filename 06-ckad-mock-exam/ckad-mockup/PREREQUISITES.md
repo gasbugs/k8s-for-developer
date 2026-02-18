@@ -3,9 +3,11 @@
 이 문서는 CKAD 모의고사 환경(`setup.sh`)을 실행하기 위해 필요한 도구들의 설치 방법을 안내합니다.
 모든 명령어는 Ubuntu/Debian Linux 환경을 기준으로 작성되었습니다.
 
-## 1. Docker 설치
+## 1. 컨테이너 런타임 설치 (Docker 또는 Podman)
 
-컨테이너 런타임으로 Docker를 사용합니다.
+본 환경은 Docker 또는 Podman을 지원합니다. 둘 중 하나를 설치해 주세요.
+
+### 옵션 A: Docker 설치
 
 ```bash
 # Docker 설치 스크립트 실행
@@ -16,6 +18,20 @@ sudo sh get-docker.sh
 sudo usermod -aG docker $USER
 rm get-docker.sh
 ```
+
+### 옵션 B: Podman 설치
+
+```bash
+# Ubuntu 22.04+ 기준 Podman 설치
+sudo apt-get update
+sudo apt-get install -y podman
+
+# Podman 환경 변수 설정 (setup.sh에서 자동으로 수행되지만 수동 설정 시)
+export KIND_EXPERIMENTAL_PROVIDER=podman
+```
+
+> [!NOTE]
+> Podman 사용 시 `setup.sh`는 자동으로 6GB 메모리와 2 CPU를 할당한 Podman Machine을 초기화하고 실행합니다.
 
 ## 2. Kubectl 설치
 
@@ -86,7 +102,11 @@ cilium version
 모든 도구가 설치되었다면 다음 명령어로 확인해 보세요:
 
 ```bash
+# Docker 사용 시
 docker --version
+# 또는 Podman 사용 시
+podman --version
+
 kubectl version --client
 kind version
 helm version

@@ -1,4 +1,15 @@
 #!/bin/bash
+set -e
+
+# 컨테이너 엔진 감지
+if docker info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="docker"
+elif podman info >/dev/null 2>&1; then
+    CONTAINER_ENGINE="podman"
+else
+    echo "오류: Docker 또는 Podman을 찾을 수 없습니다. 하나를 설치해 주세요."
+    exit 1
+fi
 
 echo "=================================================="
 echo "       CKAD Mock Exam Solutions Automation"
@@ -58,17 +69,17 @@ kubectl apply -f cronjob.yaml
 rm cronjob.yaml
 
 # 3. Image Build & Push
-echo "[Problem 3] Building Docker Image..."
+echo "[Problem 3] Building $CONTAINER_ENGINE Image..."
 # Create a dummy Dockerfile if not exists
 if [ ! -f Dockerfile ]; then
     echo "FROM busybox" > Dockerfile
     echo "ARG VERSION" >> Dockerfile
     echo "RUN echo \$VERSION > /version" >> Dockerfile
 fi
-docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
-docker tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
-docker push localhost:5000/internal-tool:v2.0
-docker save -o tool-v2.tar internal-tool:v2.0
+$CONTAINER_ENGINE build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
+$CONTAINER_ENGINE tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
+$CONTAINER_ENGINE push localhost:5000/internal-tool:v2.0
+$CONTAINER_ENGINE save -o tool-v2.tar internal-tool:v2.0
 echo "Image built, pushed, and saved to tool-v2.tar"
 
 # 4. Network Policy
