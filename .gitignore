@@ -25,6 +25,7 @@ __pycache__/
 node_modules/
 dist/
 build/
-ckad-mockup/tool-v2.tar
-ckad-mockup/Dockerfile
-ckad-mockup/old-deploy.yaml
+# Mock Exam Artifacts
+06-CKAD_Mock_Exam/ckad-mockup/tool-v2.tar
+06-CKAD_Mock_Exam/ckad-mockup/Dockerfile
+06-CKAD_Mock_Exam/ckad-mockup/old-deploy.yaml
