@@ -71,7 +71,8 @@ spec:
       app: database
   ingress:
   - from:
-    - podSelector:
+    - namespaceSelector: {}
+      podSelector:
         matchLabels:
           role: db-client
 ---
@@ -87,6 +88,18 @@ spec:
   - name: db
     image: redis
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: database-tier
+spec:
+  selector:
+    app: database
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
 # [Problem 9] Resource Quota 설정
 apiVersion: v1
 kind: ResourceQuota
@@ -95,10 +108,10 @@ metadata:
   namespace: resource-mgmt
 spec:
   hard:
-    requests.cpu: "1"
-    requests.memory: 1Gi
-    limits.cpu: "2"
-    limits.memory: 2Gi
+    requests.cpu: "0.2"
+    requests.memory: 200Mi
+    limits.cpu: "0.5"
+    limits.memory: 500Mi
 ---
 # [Problem 10] Multi-container Pod (Error 로그 발생기)
 apiVersion: v1
@@ -115,7 +128,7 @@ spec:
     image: busybox
     command: ["sh", "-c", "while true; do echo 'ERROR: Connection failed at \$(date)'; sleep 5; done"]
 ---
-# [Problem 11] Ingress용 서비스 미리 생성
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -125,6 +138,26 @@ spec:
   ports: [{port: 80}]
   selector: {app: api}
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-app
+  namespace: traffic-mgmt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        command: ["/bin/sh", "-c", "mkdir -p /usr/share/nginx/html/api && echo 'API Backend' > /usr/share/nginx/html/api/index.html && nginx -g 'daemon off;'"]
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -133,6 +166,26 @@ metadata:
 spec:
   ports: [{port: 80}]
   selector: {app: web}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: traffic-mgmt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        command: ["/bin/sh", "-c", "echo 'Web Backend' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"]
 ---
 # [Problem 12] Label 불일치 상황 (Troubleshooting용)
 apiVersion: apps/v1
@@ -152,6 +205,7 @@ spec:
       containers:
       - name: nginx
         image: nginx
+        command: ["/bin/sh", "-c", "echo 'Backend Connected' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"]
 ---
 apiVersion: v1
 kind: Service
@@ -191,6 +245,7 @@ FROM alpine
 ARG VERSION
 ENV APP_VERSION=\$VERSION
 RUN echo "Building version \$APP_VERSION"
+RUN echo \$VERSION > /version
 EOF
 
 # [Problem 8] 구형 API 버전 파일 생성
@@ -250,6 +305,7 @@ spec:
       containers:
       - name: web
         image: nginx
+        command: ["/bin/sh", "-c", "sed -i 's/80;/8080;/' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
 ---
 # [Problem 16] ConfigMap 마운트를 위한 Pod
 apiVersion: v1

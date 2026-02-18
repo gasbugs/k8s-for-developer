@@ -51,8 +51,12 @@
 
 **검증 (Validation):**
 ```bash
-kubectl get pods -n production-webapp -l version=v2
+# 엔드포인트에 v2 파드가 포함되었는지 확인
 kubectl get ep my-app-service -n production-webapp
+
+# 트래픽 분산 확인 (Apache/v1과 Nginx/v2가 번갈아 응답하는지 확인)
+# app-v1 파드 중 하나를 빌려 테스트 수행
+kubectl exec -n production-webapp deployment/app-v1 -- /bin/sh -c 'for i in $(seq 1 20); do curl -sI http://my-app-service | grep Server; done'
 ```
 
 ---
@@ -123,12 +127,21 @@ kubectl describe cronjob settlement-job -n batch-processing | grep -E "Schedule|
     
     # 푸시
     docker push localhost:5000/internal-tool:v2.0
+
+    # 이미지 아카이브 저장
+    docker save -o tool-v2.tar internal-tool:v2.0
     ```
 
 **검증 (Validation):**
 ```bash
 # 레지스트리 API를 통한 이미지 및 태그 확인
 curl -s http://localhost:5000/v2/internal-tool/tags/list
+
+# tar 파일 생성 확인
+ls -lh tool-v2.tar
+
+# 이미지 내부 버전 확인
+docker run --rm internal-tool:v2.0 cat /version
 ```
 
 ---
@@ -160,7 +173,11 @@ curl -s http://localhost:5000/v2/internal-tool/tags/list
 
 **검증 (Validation):**
 ```bash
+# 레이블 확인
 kubectl get pods -n backend-tier --show-labels | grep db-client
+
+# 실제 통신 확인 (database-tier의 database 서비스로 연결 테스트)
+kubectl exec -n backend-tier deployment/api-server -- /usr/bin/bash -c 'timeout 2 bash -c "true > /dev/tcp/database.database-tier.svc.cluster.local/6379"' && echo "Connectivity Success"
 ```
 
 ---
@@ -319,10 +336,14 @@ kubectl get deploy old-app -n migration-test
 
 **솔루션:**
 
-1.  Quota 확인: `kubectl describe resourcequota -n resource-mgmt`
+1.  ResourceQuota 확인:
+    ```bash
+    kubectl describe resourcequota mem-cpu-demo -n resource-mgmt
+    ```
+    - 출력 내용 중 `Requests`와 `Limits` 항목의 `Hard` 값을 확인합니다. (예: `requests.cpu: 0.2`, `requests.memory: 200Mi`, `limits.cpu: 0.5`, `limits.memory: 500Mi`)
 
 2.  파드 YAML 작성 (`pod.yaml`):
-    - `requests.cpu`, `requests.memory` 등을 쿼터 50% 수준으로 설정.
+    - 확인한 쿼터 값에 맞춰 (또는 그 이내로) 리소스를 설정합니다.
 
     **YAML 예시:**
     ```yaml
@@ -337,11 +358,11 @@ kubectl get deploy old-app -n migration-test
         image: nginx
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "0.5"
+            cpu: "0.2"
+            memory: "200Mi"
           limits:
-            memory: "512Mi"
             cpu: "0.5"
+            memory: "500Mi"
     ```
 
 3.  적용:
@@ -351,7 +372,8 @@ kubectl get deploy old-app -n migration-test
 
 **검증 (Validation):**
 ```bash
-kubectl get pod quota-pod -n resource-mgmt
+# 파드 상태 및 리소스 설정 확인
+kubectl describe pod quota-pod -n resource-mgmt
 ```
 
 ---
@@ -377,7 +399,7 @@ cat /tmp/sidecar_error.log
 **솔루션:**
 
 1.  `ingress.yaml` 작성:
-    - `ingressClassName: nginx` 설정.
+    - `ingressClassName: traefik` 설정.
     - 경로 규칙(`rules`) 설정.
 
     **YAML 예시:**
@@ -440,7 +462,12 @@ kubectl describe ingress main-ingress -n traffic-mgmt
 
 **검증 (Validation):**
 ```bash
+# Endpoints 연결 확인
 kubectl get ep backend-svc -n svc-discovery
+
+# 실제 통신 확인 (동일 네임스페이스 내 파드에서 테스트)
+kubectl exec -n svc-discovery deployment/backend-deploy -- curl -s http://backend-svc
+# 결과에 'Backend Connected'가 출력되어야 함
 ```
 
 ---
@@ -553,7 +580,7 @@ kubectl describe pod -n storage-layer | grep Mounts -A 2
 
 1.  Deployment 수정:
     ```bash
-    kubectl edit deployment <deploy-name> -n availability-test
+    kubectl edit deployment ready-check-app -n availability-test
     ```
 
 2.  Probe 추가:
@@ -564,7 +591,7 @@ kubectl describe pod -n storage-layer | grep Mounts -A 2
       template:
         spec:
           containers:
-          - name: app
+          - name: web
             readinessProbe:
               httpGet:
                 path: /healthz
@@ -574,7 +601,11 @@ kubectl describe pod -n storage-layer | grep Mounts -A 2
 
 **검증 (Validation):**
 ```bash
-kubectl get deploy -n availability-test -o yaml | grep readinessProbe -A 5
+# 프로브 설정 확인
+kubectl describe deployment ready-check-app -n availability-test | grep Readiness
+
+# 파드 준비 상태 확인 (Ready 1/1 확인)
+kubectl get pods -n availability-test -l app=ready-check
 ```
 
 ---
@@ -588,30 +619,34 @@ kubectl get deploy -n availability-test -o yaml | grep readinessProbe -A 5
     kubectl create configmap app-config --from-literal=server.port=8080 -n config-db
     ```
 
-2.  Deployment 수정:
+2.  Pod 수정 및 재성성:
+    - Pod의 경우 실행 중인 상태에서 볼륨 수정을 지원하지 않으므로, YAML을 추출하여 수정한 뒤 재생성합니다.
     ```bash
-    kubectl edit deployment <deploy-name> -n config-db
+    kubectl get pod config-pod -n config-db -o yaml > pod.yaml
+    vi pod.yaml # spec.volumes 및 spec.containers.volumeMounts 추가
+    kubectl delete pod config-pod -n config-db
+    kubectl apply -f pod.yaml
     ```
 
     **YAML 변경 부분:**
     ```yaml
     spec:
-      template:
-        spec:
-          volumes:
-          - name: config-volume
-            configMap:
-              name: app-config
-          containers:
-          - name: app
-            volumeMounts:
-            - name: config-volume
-              mountPath: /etc/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+      containers:
+      - name: db-app
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
     ```
 
 **검증 (Validation):**
 ```bash
-kubectl exec -n config-db <pod-name> -- cat /etc/config/server.port
+# 마운트 및 파일 내용 확인
+kubectl exec -n config-db config-pod -- cat /etc/config/server.port
+# 결과로 '8080'이 출력되어야 함
 ```
 
 ---
@@ -652,5 +687,9 @@ kubectl exec -n config-db <pod-name> -- cat /etc/config/server.port
 
 **검증 (Validation):**
 ```bash
-kubectl get pod nginx-pod -n web-server-prod -o yaml
+# 환경 변수 확인 (Pod 내부)
+kubectl exec -n web-server-prod nginx-pod -- env | grep ENV_MODE
+
+# 포트 설정 확인
+kubectl get pod nginx-pod -n web-server-prod -o jsonpath='{.spec.containers[0].ports[0]}'
 ```

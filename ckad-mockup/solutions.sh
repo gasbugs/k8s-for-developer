@@ -68,11 +68,13 @@ fi
 docker build -t internal-tool:v2.0 --build-arg VERSION=2.0 .
 docker tag internal-tool:v2.0 localhost:5000/internal-tool:v2.0
 docker push localhost:5000/internal-tool:v2.0
-echo "Image built and saved to tool-v2.tar"
+docker save -o tool-v2.tar internal-tool:v2.0
+echo "Image built, pushed, and saved to tool-v2.tar"
 
 # 4. Network Policy
 echo "[Problem 4] Updating Deployment for Network Policy..."
 kubectl patch deployment api-server -n backend-tier --patch '{"spec": {"template": {"metadata": {"labels": {"role": "db-client"}}}}}'
+kubectl rollout status deployment/api-server -n backend-tier --timeout=60s
 
 # 5. Secret & Env
 echo "[Problem 5] Creating Secret and Injecting Env..."
@@ -139,7 +141,10 @@ else
 fi
 
 # 9. Resource Quota
-echo "[Problem 9] Creating Pod within Quota..."
+echo "[Problem 9] Creating Pod using Quota Limits..."
+# 1. 쿼터 확인: kubectl describe resourcequota mem-cpu-demo -n resource-mgmt
+# 2. 확인된 값: requests.cpu=0.2, requests.memory=200Mi, limits.cpu=0.5, limits.memory=500Mi
+kubectl delete pod quota-pod -n resource-mgmt --ignore-not-found --force --grace-period=0
 cat <<EOF > quota-pod.yaml
 apiVersion: v1
 kind: Pod
@@ -152,11 +157,11 @@ spec:
     image: nginx
     resources:
       requests:
-        cpu: "0.5"
-        memory: "512Mi"
+        cpu: "0.2"
+        memory: "200Mi"
       limits:
         cpu: "0.5"
-        memory: "512Mi"
+        memory: "500Mi"
 EOF
 kubectl apply -f quota-pod.yaml
 rm quota-pod.yaml
@@ -173,7 +178,7 @@ metadata:
   name: main-ingress
   namespace: traffic-mgmt
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
   - http:
       paths:
