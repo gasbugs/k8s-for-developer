@@ -26,6 +26,6 @@ node_modules/
 dist/
 build/
 # Mock Exam Artifacts
-06-CKAD_Mock_Exam/ckad-mockup/tool-v2.tar
-06-CKAD_Mock_Exam/ckad-mockup/Dockerfile
-06-CKAD_Mock_Exam/ckad-mockup/old-deploy.yaml
+06-ckad-mock-exam/ckad-mockup/tool-v2.tar
+06-ckad-mock-exam/ckad-mockup/Dockerfile
+06-ckad-mock-exam/ckad-mockup/old-deploy.yaml

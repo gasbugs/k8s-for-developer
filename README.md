@@ -6,12 +6,12 @@
 
 강의 섹션별로 디렉토리가 구성될 예정입니다.
 
-*   `01-K8s_Overview_and_Setup`: 쿠버네티스 입문 및 설치
-*   `02-App_Observability_and_Maintenance`: 로깅, 모니터링 및 트러블슈팅
-*   `03-App_Design_and_Build`: 애플리케이션 설계 패턴 및 빌드
-*   `04-Service_and_Networking`: 서비스 연결 및 인그레스
-*   `05-App_Config_and_Security`: ConfigMap/Secret 및 보안 컨텍스트
-*   `06-CKAD_Mock_Exam`: CKAD 모의고사 및 심화 실습
+*   `01-k8s-overview-and-setup`: 쿠버네티스 입문 및 설치
+*   `02-app-observability-and-maintenance`: 로깅, 모니터링 및 트러블슈팅
+*   `03-app-design-and-build`: 애플리케이션 설계 패턴 및 빌드
+*   `04-service-and-networking`: 서비스 연결 및 인그레스
+*   `05-app-config-and-security`: ConfigMap/Secret 및 보안 컨텍스트
+*   `06-ckad-mock-exam`: CKAD 모의고사 및 심화 실습
 
 ## 🚀 시작하기
 
