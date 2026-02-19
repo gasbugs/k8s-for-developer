@@ -148,6 +148,64 @@ spec:
   selector: {app: my-app, version: blue}
   ports: [{port: 80}]
 ---
+# [Problem 2] NetworkPolicy 테스트용 DB 파드 및 서비스
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db-pod
+  namespace: secure-db
+  labels: {app: database}
+spec:
+  containers:
+  - name: db
+    image: busybox
+    command: ["sh", "-c", "nc -lk -p 5432 -e echo 'DB Connection Successful'"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-service
+  namespace: secure-db
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: database
+---
+# [Problem 8] Ingress 테스트용 백엔드 파드
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-1-backend
+  namespace: multi-app
+spec:
+  selector:
+    matchLabels: {app: svc-1}
+  template:
+    metadata:
+      labels: {app: svc-1}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-2-backend
+  namespace: multi-app
+spec:
+  selector:
+    matchLabels: {app: svc-2}
+  template:
+    metadata:
+      labels: {app: svc-2}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+---
 # [Problem 14] HPA 테스트용 Deployment
 apiVersion: apps/v1
 kind: Deployment

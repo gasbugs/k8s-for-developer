@@ -20,7 +20,9 @@ metadata:
   name: strict-db-policy
   namespace: secure-db
 spec:
-  podSelector: {} # 모든 파드 선택
+  podSelector:
+    matchLabels:
+      app: database
   policyTypes:
   - Ingress
   - Egress
@@ -32,7 +34,7 @@ spec:
     ports:
     - protocol: TCP
       port: 5432
-  egress: [] # 모든 트래픽 차단 (Egress 필드가 존재하지만 비어있음)
+  egress: [] # DB 파드의 모든 Egress 트래픽 차단
 EOF
 
 # 3. 복합 리소스 권한 제어 (RBAC Role & Binding)

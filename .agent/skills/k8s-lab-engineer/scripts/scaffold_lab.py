@@ -79,6 +79,8 @@ echo ""
 check_problem() {{
     local num=$1 pts=$2 desc=$3 cmd=$4
     echo -n "[Problem $num] $desc ($pts pts)... "
+    # Functional connectivity check optimization:
+    # Use 'kubectl exec' or 'curl' here for network problems.
     if eval "$cmd" > /dev/null 2>&1; then
         echo "PASS"
         SCORE=$((SCORE + pts))
@@ -88,9 +90,22 @@ check_problem() {{
     TOTAL_SCORE=$((TOTAL_SCORE + pts))
 }}
 
-# Example HPA check in template might need similar logic if added
+# Example of HPA check with v2 compatibility
+# check_problem 1 10 "HPA Configuration" "
+#     kubectl get hpa web-app && \
+#     kubectl get hpa web-app -o yaml | grep -E 'averageUtilization: 50|targetCPUUtilizationPercentage: 50'
+# "
+
+echo ""
+echo "=================================================="
 echo "Final Score: $SCORE / $TOTAL_SCORE"
 echo "=================================================="
+
+if [ $SCORE -ge $PASS_THRESHOLD ]; then
+    echo "Result: PASS"
+else
+    echo "Result: FAIL"
+fi
 """
 
 KIND_CONFIG_TEMPLATE = """kind: Cluster
@@ -182,7 +197,22 @@ kind delete cluster --name {name}
 DEPLOY_TEMPLATE = """#!/bin/bash
 set -e
 echo "Deploying base resources for {name}..."
-# kubectl apply -f ...
+
+# Create namespaces
+# kubectl create ns production-tier --dry-run=client -o yaml | kubectl apply -f -
+
+# Deploy backend services for connectivity testing
+# kubectl apply -f - <<EOF
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: backend-pod
+#   labels: {app: backend}
+# spec:
+#   containers:
+#   - name: nginx
+#     image: nginx
+# EOF
 """
 
 def scaffold(output_dir, project_name):

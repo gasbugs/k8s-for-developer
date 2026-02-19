@@ -31,11 +31,19 @@ check_problem 1 7 "Rolling Update & Rollback Settings" "
 "
 
 # 2. 엄격한 네트워크 보안 정책 (7점)
-check_problem 2 7 "Strict Network Policy" "
-    kubectl get netpol strict-db-policy -n secure-db && \
-    kubectl get netpol strict-db-policy -n secure-db -o yaml | grep -q 'podSelector: {}' && \
-    kubectl get netpol strict-db-policy -n secure-db -o yaml | grep -q 'role: api-backend' && \
-    kubectl get netpol strict-db-policy -n secure-db -o yaml | grep -q 'port: 5432'
+check_problem 2 7 "Strict Network Policy (Connectivity)" "
+    # 1. 정책 존재 여부 확인
+    kubectl get netpol strict-db-policy -n secure-db > /dev/null 2>&1 && \
+    # 2. DB 파드 IP 획득
+    DB_IP=\$(kubectl get pod db-pod -n secure-db -o jsonpath='{.status.podIP}') && \
+    # 3. 허용된 레이블(role: api-backend)에서의 접속 테스트 (성공해야 함)
+    kubectl run test-conn-allow --rm -i --restart=Never --image=busybox -n secure-db --labels='role=api-backend' -- \
+      nc -zv -w 2 \$DB_IP 5432 > /dev/null 2>&1 && \
+    # 4. 허용되지 않은 레이블에서의 접속 테스트 (실패해야 함)
+    ! kubectl run test-conn-deny --rm -i --restart=Never --image=busybox -n secure-db -- \
+      nc -zv -w 2 \$DB_IP 5432 > /dev/null 2>&1 && \
+    # 5. Egress 차단 확인 (외부 접속 실패해야 함)
+    ! kubectl exec db-pod -n secure-db -- nc -zv -w 2 google.com 80 > /dev/null 2>&1
 "
 
 # 3. RBAC (7점)
@@ -74,10 +82,13 @@ check_problem 7 6 "CronJob Settings" "
 "
 
 # 8. 인그레스 (7점)
-check_problem 8 7 "Ingress Multi-Path & Rewrite" "
-    kubectl get ingress app-ingress -n multi-app -o jsonpath='{.metadata.annotations}' | grep -q 'rewrite-target' && \
-    kubectl get ingress app-ingress -n multi-app -o jsonpath='{.spec.rules[0].http.paths[*].path}' | grep -q '/app1' && \
-    kubectl get ingress app-ingress -n multi-app -o jsonpath='{.spec.rules[0].http.paths[*].path}' | grep -q '/app2'
+check_problem 8 7 "Ingress Multi-Path & Rewrite (Connectivity)" "
+    # 1. 인그레스 존재 여부 확인
+    kubectl get ingress app-ingress -n multi-app > /dev/null 2>&1 && \
+    # 2. /app1 접속 테스트 (성공해야 함) - NodePort 31080 사용
+    curl -s -o /dev/null -w '%{http_code}' localhost:31080/app1 | grep -q '200' && \
+    # 3. /app2 접속 테스트 (성공해야 함)
+    curl -s -o /dev/null -w '%{http_code}' localhost:31080/app2 | grep -q '200'
 "
 
 # 9. 노드 어피니티 (7점)
