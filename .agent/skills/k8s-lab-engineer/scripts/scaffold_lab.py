@@ -81,6 +81,8 @@ check_problem() {{
     echo -n "[Problem $num] $desc ($pts pts)... "
     # Functional pod readiness check:
     # kubectl get pod <name> -n <ns> -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True'
+    # Functional CronJob trigger check:
+    # kubectl create job --from=cronjob/<name> <job-name> -n <ns> && kubectl wait --for=condition=complete job/<job-name> -n <ns>
     if eval "$cmd" > /dev/null 2>&1; then
         echo "PASS"
         SCORE=$((SCORE + pts))

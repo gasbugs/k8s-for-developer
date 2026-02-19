@@ -79,9 +79,15 @@ check_problem 6 7 "Readiness & Liveness Probes" "
 "
 
 # 7. 크론잡 (6점)
-check_problem 7 6 "CronJob Settings" "
+check_problem 7 6 "CronJob Settings (Functional)" "
+    # 1. 설정 확인
     kubectl get cronjob backup-cronjob -n finance-batch -o jsonpath='{.spec.concurrencyPolicy}' | grep -q 'Forbid' && \
-    kubectl get cronjob backup-cronjob -n finance-batch -o jsonpath='{.spec.jobTemplate.spec.backoffLimit}' | grep -q '3'
+    kubectl get cronjob backup-cronjob -n finance-batch -o jsonpath='{.spec.jobTemplate.spec.backoffLimit}' | grep -q '3' && \
+    # 2. 강제 실행 테스트 (기능 검증)
+    kubectl delete job test-trigger -n finance-batch --ignore-not-found > /dev/null 2>&1 && \
+    kubectl create job --from=cronjob/backup-cronjob test-trigger -n finance-batch > /dev/null 2>&1 && \
+    kubectl wait --for=condition=complete job/test-trigger -n finance-batch --timeout=60s > /dev/null 2>&1 && \
+    kubectl delete job test-trigger -n finance-batch > /dev/null 2>&1
 "
 
 # 8. 인그레스 (7점)
