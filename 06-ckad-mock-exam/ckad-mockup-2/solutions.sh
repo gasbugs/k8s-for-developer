@@ -107,7 +107,13 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx
+        image: nginx:alpine
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          sed -i 's/listen[[:space:]]*80;/listen 8080;/g' /etc/nginx/conf.d/default.conf && \
+          echo "Ready" > /usr/share/nginx/html/ready && \
+          nginx -g "daemon off;"
         ports: [{containerPort: 8080}]
         readinessProbe:
           httpGet:

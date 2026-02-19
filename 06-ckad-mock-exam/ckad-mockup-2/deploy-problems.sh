@@ -227,8 +227,13 @@ spec:
             cpu: 100m
 EOF
 
-# [Problem 9] 노드 레이블링 및 테인팅 (전략: 첫 번째 워커 노드 선택)
-WORKER_NODE=$(kubectl get nodes -l kubernetes.io/role!=control-plane -o jsonpath='{.items[0].metadata.name}')
+# [Problem 9] 노드 레이블링 및 테인팅
+WORKER_NODE=$(kubectl get nodes -l node-role.kubernetes.io/control-plane!="" -o jsonpath='{range .items[*]}{.metadata.name}{"\\n"}{end}' | grep -v 'control-plane' | head -n 1)
+# Kind 특화 검색 (만약 위에서 못 찾으면)
+if [ -z "$WORKER_NODE" ]; then
+  WORKER_NODE=$(kubectl get nodes --no-headers | grep -v 'control-plane' | awk '{print $1}' | head -n 1)
+fi
+
 if [ ! -z "$WORKER_NODE" ]; then
   kubectl label node $WORKER_NODE dedicated=secure --overwrite
   kubectl taint node $WORKER_NODE dedicated=secure:NoSchedule --overwrite

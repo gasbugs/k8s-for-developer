@@ -27,7 +27,7 @@ check_problem() {
 check_problem 1 7 "Rolling Update & Rollback Settings" "
     kubectl get deploy advanced-web -n production-tier -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}' | grep -q '0' && \
     kubectl get deploy advanced-web -n production-tier -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}' | grep -q '1' && \
-    [ \$(kubectl get deploy advanced-web -n production-tier -o jsonpath='{.spec.replicas}') -eq 5 ]
+    kubectl get deploy advanced-web -n production-tier -o jsonpath='{.status.readyReplicas}' | grep -q '5'
 "
 
 # 2. 엄격한 네트워크 보안 정책 (7점)
@@ -57,12 +57,14 @@ check_problem 3 7 "RBAC Role & Binding" "
 
 # 4. 멀티 컨테이너 (6점)
 check_problem 4 6 "Multi-Container Pod" "
+    kubectl get pod log-handler -n logging-namespace -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True' && \
     [ \$(kubectl get pod log-handler -n logging-namespace -o jsonpath='{.spec.containers[*].name}' | wc -w) -eq 2 ] && \
     kubectl get pod log-handler -n logging-namespace -o jsonpath='{.spec.volumes[*].emptyDir}' | grep -v 'null' > /dev/null
 "
 
 # 5. 리소스 쿼터 (6점)
 check_problem 5 6 "Resource Quota Compliance" "
+    kubectl get pod critical-pod -n critical-apps -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True' && \
     kubectl get resourcequota cpu-limit-quota -n critical-apps && \
     kubectl get pod critical-pod -n critical-apps -o jsonpath='{.spec.containers[0].resources.requests.cpu}' | grep -q '200m' && \
     kubectl get pod critical-pod -n critical-apps -o jsonpath='{.spec.containers[0].resources.limits.cpu}' | grep -q '500m'
@@ -70,6 +72,7 @@ check_problem 5 6 "Resource Quota Compliance" "
 
 # 6. 프로브 설정 (7점)
 check_problem 6 7 "Readiness & Liveness Probes" "
+    kubectl get deploy health-check-app -n app-tier -o jsonpath='{.status.readyReplicas}' | grep -q '1' && \
     kubectl get deploy health-check-app -n app-tier -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.port}' | grep -q '8080' && \
     kubectl get deploy health-check-app -n app-tier -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.tcpSocket.port}' | grep -q '8080' && \
     kubectl get deploy health-check-app -n app-tier -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}' | grep -q '15'
@@ -93,6 +96,7 @@ check_problem 8 7 "Ingress Multi-Path & Rewrite (Connectivity)" "
 
 # 9. 노드 어피니티 (7점)
 check_problem 9 7 "Node Affinity & Tolerations" "
+    kubectl get pod secure-workload -n secure-compute -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True' && \
     kubectl get pod secure-workload -n secure-compute -o jsonpath='{.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution}' && \
     kubectl get pod secure-workload -n secure-compute -o jsonpath='{.spec.tolerations[*].key}' | grep -q 'dedicated'
 "
@@ -104,12 +108,13 @@ check_problem 10 6 "PVC Expansion" "
 
 # 11. 트러블슈팅 (7점)
 check_problem 11 7 "Troubleshooting ConfigMap" "
-    kubectl get pod -n app-stack -l app=web -o jsonpath='{.items[0].status.phase}' | grep -q 'Running' && \
+    kubectl get deploy web-deploy -n app-stack -o jsonpath='{.status.readyReplicas}' | grep -q '1' && \
     kubectl get deploy web-deploy -n app-stack -o yaml | grep -q 'key: correct-key'
 "
 
 # 12. 읽기 전용 파일시스템 (6점)
 check_problem 12 6 "ReadOnlyRootFilesystem" "
+    kubectl get pod readonly-pod -n hardened-app -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True' && \
     kubectl get pod readonly-pod -n hardened-app -o jsonpath='{.spec.containers[0].securityContext.readOnlyRootFilesystem}' | grep -q 'true' && \
     kubectl get pod readonly-pod -n hardened-app -o jsonpath='{.spec.containers[0].volumeMounts[*].mountPath}' | grep -q '/var/cache/nginx'
 "

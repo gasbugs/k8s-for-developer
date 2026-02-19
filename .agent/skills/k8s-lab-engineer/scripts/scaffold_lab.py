@@ -79,8 +79,8 @@ echo ""
 check_problem() {{
     local num=$1 pts=$2 desc=$3 cmd=$4
     echo -n "[Problem $num] $desc ($pts pts)... "
-    # Functional connectivity check optimization:
-    # Use 'kubectl exec' or 'curl' here for network problems.
+    # Functional pod readiness check:
+    # kubectl get pod <name> -n <ns> -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep -q 'True'
     if eval "$cmd" > /dev/null 2>&1; then
         echo "PASS"
         SCORE=$((SCORE + pts))
