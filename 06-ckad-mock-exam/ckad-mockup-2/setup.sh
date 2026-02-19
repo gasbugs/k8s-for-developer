@@ -37,7 +37,18 @@ cilium install --version 1.18.4 || echo "Cilium installation step skipped (likel
 echo "3. Installing Rancher Local Path Provisioner..."
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
 
-echo "4. Installing Traefik via Helm..."
+echo "4. Generating SSL Certificate and Installing Traefik..."
+if command -v openssl >/dev/null 2>&1; then
+    echo "Generating self-signed certificate for Traefik..."
+    CERT_DIR=$(mktemp -d)
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "$CERT_DIR/tls.key" -out "$CERT_DIR/tls.crt" -subj "/CN=*.kind.local"
+    kubectl create ns traefik --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create secret tls local-selfsigned-tls --cert="$CERT_DIR/tls.crt" --key="$CERT_DIR/tls.key" -n traefik --dry-run=client -o yaml | kubectl apply -f -
+    rm -rf "$CERT_DIR"
+else
+    echo "Warning: openssl not found. TLS secret creation skipped."
+fi
+
 helm repo add traefik https://traefik.github.io/charts --force-update
 helm repo update
 helm upgrade --install traefik traefik/traefik --namespace traefik --create-namespace --values traefik-values.yaml

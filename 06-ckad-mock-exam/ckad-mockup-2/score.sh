@@ -110,9 +110,9 @@ check_problem 13 7 "Blue-Green Switch" "
 
 # 14. HPA (7점)
 check_problem 14 7 "HPA Configuration" "
-    kubectl get hpa -n scaling-system && \
-    kubectl get hpa -n scaling-system -o jsonpath='{.spec.maxReplicas}' | grep -q '10' && \
-    kubectl get hpa -n scaling-system -o jsonpath='{.spec.targetCPUUtilizationPercentage}' | grep -q '50'
+    kubectl get hpa web-app -n scaling-system && \
+    kubectl get hpa web-app -n scaling-system -o jsonpath='{.spec.maxReplicas}' | grep -q '10' && \
+    kubectl get hpa web-app -n scaling-system -o yaml | grep -E 'averageUtilization: 50|targetCPUUtilizationPercentage: 50'
 "
 
 # 15. 병렬 잡 (7점)
