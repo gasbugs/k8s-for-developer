@@ -1,0 +1,9 @@
+deployment:
+  kind: DaemonSet
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 31080
+  websecure:
+    nodePort: 31443

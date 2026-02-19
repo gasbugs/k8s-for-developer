@@ -5,7 +5,7 @@ description: Kubernetes 기반의 실험실(Laboratory), 모의고사(Mock Exam)
 
 # K8s Lab Engineer 스킬 (Skill)
 
-이 스킬은 표준화된 Kubernetes 실험실 환경의 생성을 자동화합니다. 이 스킬은 검증된 워크플로우(Workflow)인 설정(Setup) -> 문제 배포(Deploy Problems) -> 채점/검증(Score/Validate) -> 정리(Cleanup)를 따릅니다.
+이 스킬은 표준화된 Kubernetes 실험실 환경의 생성을 자동화합니다. Kind 클러스터 설정, Cilium CNI 설치, Traefik Ingress 구성(Helm), 그리고 Local Path Provisioner와 같은 필수 인프라 구성을 자동으로 포함하는 `setup.sh`를 포함하여, 설정(Setup) -> 문제 배포(Deploy Problems) -> 채점/검증(Score/Validate) -> 정리(Cleanup)의 전체 워크플로우를 보일러플레이트로 제공합니다.
 
 ## 트리거 조건 (Trigger Conditions)
 사용자가 다음과 같이 말할 때 이 스킬을 사용하세요:

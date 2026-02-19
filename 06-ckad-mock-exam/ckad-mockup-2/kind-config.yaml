@@ -12,4 +12,5 @@ nodes:
     protocol: TCP
 - role: worker
 - role: worker
-
+networking:
+  disableDefaultCNI: true

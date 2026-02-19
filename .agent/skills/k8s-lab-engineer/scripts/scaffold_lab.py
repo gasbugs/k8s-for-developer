@@ -6,18 +6,51 @@ import argparse
 SETUP_TEMPLATE = """#!/bin/bash
 set -e
 
-# Container engine detection
+# 컨테이너 엔진 감지 및 설정
 if docker info >/dev/null 2>&1; then
-    CONTAINER_ENGINE="docker"
-elif podman info >/dev/null 2>&1; then
-    CONTAINER_ENGINE="podman"
+    echo "Docker가 감지되었습니다. Docker를 사용하여 진행합니다."
+elif command -v podman >/dev/null 2>&1; then
+    echo "Docker를 찾을 수 없으나 Podman이 감지되었습니다. Podman 설정을 시작합니다..."
+    
+    if ! podman machine ls --format '{{.Name}}' | grep -q "podman-machine-default"; then
+        echo "Podman 머신을 초기화합니다 (2 CPUs, 6GB RAM)..."
+        podman machine init --cpus 2 --memory 6144 
+        podman machine set --rootful
+    fi
+    
+    if ! podman machine ls --format '{{.LastUp}}' | grep -q "Currently running"; then
+        echo "Podman 머신을 시작합니다..."
+        podman machine start
+    fi
+    
+    export KIND_EXPERIMENTAL_PROVIDER=podman
 else
-    echo "Error: Neither Docker nor Podman found."
+    echo "오류: Docker 또는 Podman을 찾을 수 없습니다. 하나를 설치해 주세요."
     exit 1
 fi
 
-echo "Setting up Kind cluster {name}..."
-kind create cluster --name {name} --config kind-config.yaml
+echo "1. Creating Kind Cluster {name}..."
+if kind get clusters | grep -q "{name}"; then
+  echo "Cluster '{name}' already exists. Skipping creation."
+else
+  kind create cluster --name {name} --config kind-config.yaml
+fi
+
+echo "2. Installing Cilium..."
+cilium install --version 1.18.4 || echo "Cilium installation step skipped (likely already installed)"
+
+echo "3. Installing Rancher Local Path Provisioner..."
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+
+echo "4. Installing Traefik via Helm..."
+helm repo add traefik https://traefik.github.io/charts --force-update
+helm repo update
+helm upgrade --install traefik traefik/traefik --namespace traefik --create-namespace --values traefik-values.yaml
+
+echo "5. Setting up Lab Environment..."
+bash deploy-problems.sh
+
+echo "Setup Complete!"
 """
 
 SCORE_TEMPLATE = """#!/bin/bash
@@ -55,9 +88,31 @@ echo "=================================================="
 
 KIND_CONFIG_TEMPLATE = """kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+name: {name}
 nodes:
 - role: control-plane
+  extraPortMappings:
+  - containerPort: 31080
+    hostPort: 31080
+    protocol: TCP
+  - containerPort: 31443
+    hostPort: 31443
+    protocol: TCP
 - role: worker
+- role: worker
+networking:
+  disableDefaultCNI: true
+"""
+
+TRAEFIK_VALUES_TEMPLATE = """deployment:
+  kind: DaemonSet
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 31080
+  websecure:
+    nodePort: 31443
 """
 
 CLEANUP_TEMPLATE = """#!/bin/bash
@@ -78,7 +133,8 @@ def scaffold(output_dir, project_name):
         "score.sh": SCORE_TEMPLATE.format(name=project_name),
         "cleanup.sh": CLEANUP_TEMPLATE.format(name=project_name),
         "deploy-problems.sh": DEPLOY_TEMPLATE.format(name=project_name),
-        "kind-config.yaml": KIND_CONFIG_TEMPLATE,
+        "kind-config.yaml": KIND_CONFIG_TEMPLATE.format(name=project_name),
+        "traefik-values.yaml": TRAEFIK_VALUES_TEMPLATE,
         "problems.md": f"# {project_name} Tasks\\n\\n1. Solution task 1...",
         "solutions.md": f"# {project_name} Solutions\\n\\n1. How to solve task 1..."
     }
