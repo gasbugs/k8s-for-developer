@@ -1,9 +1,57 @@
-deployment:
-  kind: DaemonSet
-service:
-  type: NodePort
+# 네트워크 포트 및 엔트리포인트 구성
+# 엔트리포인트는 들어오는 트래픽을 위한 네트워크 리스너입니다.
 ports:
+  # 'web'이라는 이름의 HTTP 엔트리포인트 정의
   web:
+    port: 80
     nodePort: 31080
+    # 주석 해제하여 HTTP에서 HTTPS로 리다이렉트 활성화 가능
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+    #       permanent: true
+
+  # 'websecure'라는 이름의 HTTPS 엔트리포인트 정의
   websecure:
+    port: 443
     nodePort: 31443
+
+# 대시보드 및 API 설정 (실무에서는 보안 설정 필수)
+api:
+  dashboard: true
+  insecure: true
+
+# IngressClass 활성화 (기본값으로 설정하여 실습 편의성 증대)
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
+# Kubernetes 프로바이더 활성화 (Ingress 및 Gateway API)
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesGateway:
+    enabled: true
+
+# Gateway API 전용 리스너 구성 (포트 불일치 오류 방지용)
+gateway:
+  listeners:
+    web:
+      port: 80
+      protocol: HTTP
+      namespacePolicy:
+        from: All
+    websecure:
+      port: 443
+      protocol: HTTPS
+      namespacePolicy:
+        from: All
+
+# 관측성(Observability) 및 로깅 설정
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
