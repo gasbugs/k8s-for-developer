@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: legacy-deployment
+  labels:
+    app: old-school
+spec:
+  replicas: 3
+  # v1beta1에서는 selector를 명시하지 않아도 
+  # template의 labels를 자동으로 참조하기도 했습니다.
+  template:
+    metadata:
+      labels:
+        app: old-school
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80

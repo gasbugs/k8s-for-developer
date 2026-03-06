@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modern-deployment
+  labels:
+    app: standard-web
+spec:
+  replicas: 3
+  # apps/v1에서는 selector가 필수이며 명시적으로 작성해야 합니다.
+  selector:
+    matchLabels:
+      app: standard-web
+  template:
+    metadata:
+      # 위 selector.matchLabels와 반드시 일치해야 합니다.
+      labels:
+        app: standard-web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25.4  # 최신 안정화 버전 예시
+        ports:
+        - containerPort: 80

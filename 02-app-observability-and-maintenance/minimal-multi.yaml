@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minimal-multi
+spec:
+  # OnFailure: 에러가 발생하여 종료된 경우에만 재시작
+  restartPolicy: OnFailure 
+  containers:
+  - name: web-server
+    image: nginx
+
+  - name: log-check
+    image: busybox
+    # 5초 간격으로 3번만 수행하고 종료되도록 수정
+    command: ["sh", "-c", "for i in 1 2 3; do wget -qO- localhost; echo 'Loop '; sleep 5; done; exit 1"]
